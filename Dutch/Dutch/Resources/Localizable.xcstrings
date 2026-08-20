@@ -1,0 +1,609 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
+    "%@ has no members yet. Add one in Dutch first." : {
+
+    },
+    "%@ pays %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ pays %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld expenses" : {
+
+    },
+    "%lld members" : {
+
+    },
+    "%lld percent of a full share" : {
+
+    },
+    "%lld to settle" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "0" : {
+
+    },
+    "1 %@ =" : {
+
+    },
+    "100% is a full share — a 51%-off fare is 49%, and two people sharing one hotel room are 50% each. The amounts beside each name always add up to the total." : {
+
+    },
+    "About" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add ${amount} for ${title} to ${group}" : {
+
+    },
+    "Add an expense to ${group}" : {
+
+    },
+    "Add Expense" : {
+
+    },
+    "Add Member" : {
+
+    },
+    "Add members first." : {
+
+    },
+    "Add members to start splitting expenses." : {
+
+    },
+    "Add the First Expense" : {
+
+    },
+    "All Currencies" : {
+
+    },
+    "Already Someone Else" : {
+
+    },
+    "Amount" : {
+
+    },
+    "Anyone who scans this code can join the group. Use Invite People instead to choose people yourself." : {
+
+    },
+    "Appearance" : {
+
+    },
+    "Bag" : {
+
+    },
+    "Beach" : {
+
+    },
+    "Blue" : {
+
+    },
+    "Briefcase" : {
+
+    },
+    "Brown" : {
+
+    },
+    "Cake" : {
+
+    },
+    "Can't Share This Group" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Car" : {
+
+    },
+    "Check Balance" : {
+
+    },
+    "Check my balance in ${group}" : {
+
+    },
+    "Check this matches on the other device." : {
+
+    },
+    "Choose a group. Dutch will remember the last one you opened." : {
+
+    },
+    "Code or name" : {
+
+    },
+    "Coffee" : {
+
+    },
+    "Colour" : {
+
+    },
+    "Contact" : {
+
+    },
+    "Copies who owes whom, the total and the expense list as text" : {
+
+    },
+    "Couldn't Join" : {
+
+    },
+    "Create" : {
+
+    },
+    "Create a Group" : {
+
+    },
+    "Create a group to start splitting expenses, or join one with a QR code." : {
+
+    },
+    "Currency" : {
+
+    },
+    "Custom Share" : {
+
+    },
+    "Defaults to the group you opened last." : {
+
+    },
+    "Delete it to start another, or unlock as many as you like." : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Done" : {
+
+    },
+    "Duplicate" : {
+
+    },
+    "Dutch" : {
+
+    },
+    "Dutch couldn't save that: %@" : {
+
+    },
+    "Dutch doesn't know which member you are in %@. Open the group and touch and hold your own name." : {
+
+    },
+    "Dutch keeps your groups in your own iCloud account. Nothing is stored on any server of ours, because there isn't one." : {
+
+    },
+    "Dutch Unlimited" : {
+
+    },
+    "Edit Group" : {
+
+    },
+    "Edit Member" : {
+
+    },
+    "Every expense in this group is recorded in this currency, on everyone's device." : {
+
+    },
+    "Everyone" : {
+
+    },
+    "everyone's even" : {
+
+    },
+    "Exchange rate" : {
+
+    },
+    "Expense Details" : {
+
+    },
+    "Expenses" : {
+
+    },
+    "Ferry" : {
+
+    },
+    "Games" : {
+
+    },
+    "Grey" : {
+
+    },
+    "Group" : {
+
+    },
+    "Group Name" : {
+
+    },
+    "House" : {
+
+    },
+    "How many %@ to one %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "How many %1$@ to one %2$@"
+          }
+        }
+      }
+    },
+    "iCloud hasn't finished creating the link yet." : {
+
+    },
+    "iCloud sync" : {
+
+    },
+    "In %@" : {
+
+    },
+    "In the group's own currency." : {
+
+    },
+    "Include whoever shares the cost. Leave the payer out if they were covering it for others." : {
+
+    },
+    "Indigo" : {
+
+    },
+    "Invitation Not Ready" : {
+
+    },
+    "Invite People" : {
+
+    },
+    "Join a Group" : {
+
+    },
+    "Joining group…" : {
+
+    },
+    "Key" : {
+
+    },
+    "Leaf" : {
+
+    },
+    "Licence — MPL 2.0" : {
+
+    },
+    "Lightbulb" : {
+
+    },
+    "Make these payments and everyone is even. Mark one paid and it is logged below." : {
+
+    },
+    "Map" : {
+
+    },
+    "Mark %@'s %@ payment to %@ as paid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mark %1$@'s %2$@ payment to %3$@ as paid"
+          }
+        }
+      }
+    },
+    "Mark Paid" : {
+
+    },
+    "Mark your %@ payment to %@ as paid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mark your %1$@ payment to %2$@ as paid"
+          }
+        }
+      }
+    },
+    "Marks this person as the one who paid" : {
+
+    },
+    "Members" : {
+
+    },
+    "Mountains" : {
+
+    },
+    "Music" : {
+
+    },
+    "Name" : {
+
+    },
+    "New Expense" : {
+
+    },
+    "New Expenses" : {
+
+    },
+    "New Group" : {
+
+    },
+    "No expenses yet." : {
+
+    },
+    "No Groups" : {
+
+    },
+    "None" : {
+
+    },
+    "Not Me" : {
+
+    },
+    "Not Now" : {
+
+    },
+    "Nothing spent yet" : {
+
+    },
+    "Notifications" : {
+
+    },
+    "OK" : {
+
+    },
+    "One group is free" : {
+
+    },
+    "One group is free. Unlock unlimited groups with a one-time purchase — joining other people's groups is always free." : {
+
+    },
+    "One-time purchase." : {
+
+    },
+    "Only people you invite can join, so scanning this code won't work on its own. Use Invite People, and allow anyone with the link from there." : {
+
+    },
+    "Open Notification Settings" : {
+
+    },
+    "Opens Dutch on a group's new expense form." : {
+
+    },
+    "Opens the expense for editing" : {
+
+    },
+    "Orange" : {
+
+    },
+    "Other…" : {
+
+    },
+    "Paid By" : {
+
+    },
+    "Paw print" : {
+
+    },
+    "Percent" : {
+
+    },
+    "Percent of a full share, 1 to 200. A fare with 51% off is 49." : {
+
+    },
+    "Pink" : {
+
+    },
+    "Plane" : {
+
+    },
+    "Point the camera at the group's QR code." : {
+
+    },
+    "Preparing invitation…" : {
+
+    },
+    "Privacy Policy" : {
+
+    },
+    "Pull the list down to check iCloud." : {
+
+    },
+    "Purple" : {
+
+    },
+    "QR code to join %@" : {
+
+    },
+    "Recorded in %@, fixed when the group was created." : {
+
+    },
+    "Records an expense you paid for, split evenly between everyone in the group." : {
+
+    },
+    "Remove" : {
+
+    },
+    "Restaurant" : {
+
+    },
+    "Restore Purchases" : {
+
+    },
+    "Save" : {
+
+    },
+    "Says what you owe or are owed in a group." : {
+
+    },
+    "Set" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Settle Up" : {
+
+    },
+    "Settled" : {
+
+    },
+    "Settled up" : {
+
+    },
+    "Share for %@" : {
+
+    },
+    "Share Group" : {
+
+    },
+    "Share Summary" : {
+
+    },
+    "Shared group" : {
+
+    },
+    "Shopping cart" : {
+
+    },
+    "Shows sync details" : {
+
+    },
+    "Snow" : {
+
+    },
+    "Someone" : {
+
+    },
+    "Source Code" : {
+
+    },
+    "Split Among" : {
+
+    },
+    "Suitcase" : {
+
+    },
+    "Symbol" : {
+
+    },
+    "Teal" : {
+
+    },
+    "Tent" : {
+
+    },
+    "That group isn't on this device." : {
+
+    },
+    "The App Store couldn't be reached." : {
+
+    },
+    "The name and colour are how everyone in the group sees this person, on their phone as well as yours." : {
+
+    },
+    "This Is Me" : {
+
+    },
+    "Title (optional)" : {
+
+    },
+    "Total spent" : {
+      "comment" : "A label for the total amount spent in a group.",
+      "isCommentAutoGenerated" : true
+    },
+    "Touch and hold your own name to have Dutch address you directly." : {
+
+    },
+    "Tram" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Undo" : {
+
+    },
+    "Uneven split" : {
+
+    },
+    "Unlock as many as you like with a single purchase." : {
+
+    },
+    "Unlock for %@" : {
+
+    },
+    "Use Automatic Colour" : {
+
+    },
+    "Used in This Group" : {
+
+    },
+    "Version" : {
+
+    },
+    "Website" : {
+
+    },
+    "What for" : {
+
+    },
+    "Wine" : {
+
+    },
+    "You" : {
+
+    },
+    "You pay %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You pay %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "You've used your free group" : {
+
+    }
+  },
+  "version" : "1.2"
+}
