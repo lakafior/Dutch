@@ -39,6 +39,10 @@ struct GroupDetailView: View {
     @State private var membersPendingDeletion: [Person] = []
     @State private var formTarget: FormTarget?
     @State private var editTarget: EditTarget?
+    /// The transfer whose amount was tapped, if any. Holds the `Transfer`
+    /// rather than the two `Person` records because the row has only the
+    /// former, and `record` already does that lookup for the full payment.
+    @State private var partialTarget: Transfer?
     @State private var errorMessage: String?
     /// Bumped on each successful add so the haptic fires once per confirmed
     /// write, rather than on any change to the counts (deletes included).
@@ -186,6 +190,15 @@ struct GroupDetailView: View {
         }
         .sheet(isPresented: $showingEditGroup) {
             EditGroupSheet(group: group, onSave: updateGroup)
+        }
+        .sheet(item: $partialTarget) { transfer in
+            PartialPaymentSheet(
+                transfer: transfer,
+                currencyCode: group.currency,
+                isMe: transfer.from.id == me?.id
+            ) { amount in
+                record(transfer, amount: amount, in: contents)
+            }
         }
         .confirmationDialog(
             deletionTitle,
@@ -411,7 +424,8 @@ struct GroupDetailView: View {
                         transfer: transfer,
                         currencyCode: group.currency,
                         isMe: transfer.from.id == me?.id,
-                        onSettle: { record(transfer, in: contents) }
+                        onSettle: { record(transfer, in: contents) },
+                        onPartial: { partialTarget = transfer }
                     )
                 }
             } header: {
@@ -653,7 +667,14 @@ struct GroupDetailView: View {
     /// write — it needs the `Person` records behind them, hence the lookup.
     /// A transfer naming somebody who is no longer in the group can't be
     /// recorded, and silently doing nothing would look like the tap missed.
-    private func record(_ transfer: Transfer, in contents: Contents) {
+    ///
+    /// `amount` defaults to the whole transfer, which is what the button
+    /// passes. `PartialPaymentSheet` passes less. Nothing below this line
+    /// tells the two apart: a payment is an ordinary expense flagged
+    /// `isReimbursement`, and the settlement recomputes from balances, so
+    /// five instalments clear a debt exactly as one payment does — and the
+    /// swipe-to-undo on each row backs them out one at a time.
+    private func record(_ transfer: Transfer, amount: Money? = nil, in contents: Contents) {
         guard
             let payer = contents.person[transfer.from.id],
             let recipient = contents.person[transfer.to.id]
@@ -666,7 +687,7 @@ struct GroupDetailView: View {
             try store.recordPayment(
                 from: payer,
                 to: recipient,
-                amount: transfer.amount,
+                amount: amount ?? transfer.amount,
                 in: group
             )
             addCount += 1
@@ -1003,8 +1024,15 @@ private struct TransferRow: View {
     /// Whether the payment is one *this* device's owner has to make.
     let isMe: Bool
     let onSettle: () -> Void
+    /// Opens the sheet for handing over less than the whole transfer.
+    let onPartial: () -> Void
 
-    private var payer: String { isMe ? "You" : transfer.from.name }
+    /// Wrapped, because this returns a `String` and `Text(payer)` resolves to
+    /// the non-localizing initializer — the failure that has no warning and no
+    /// stale key, because the string never had a key to begin with.
+    private var payer: String {
+        isMe ? String(localized: "You") : transfer.from.name
+    }
 
     private var amount: String {
         transfer.amount.formatted(currencyCode: currencyCode)
@@ -1012,16 +1040,26 @@ private struct TransferRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // One chooser over two *complete* candidates, amount included. The
+            // fallback exists to need less width, so hoisting the amount out of
+            // both would leave two spellings of the same row and never reach
+            // the vertical layout at all.
             ViewThatFits(in: .horizontal) {
                 // Preferred, while two names and an amount genuinely share a line.
                 HStack(spacing: 8) {
-                    Text(payer).fontWeight(.medium)
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(transfer.to.name).fontWeight(.medium)
+                    HStack(spacing: 8) {
+                        Text(payer).fontWeight(.medium)
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(transfer.to.name).fontWeight(.medium)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(namesLabel)
+
                     Spacer(minLength: 12)
-                    Text(amount).monospacedDigit()
+
+                    amountButton
                 }
 
                 // Fallback for long names and accessibility text sizes, where the
@@ -1029,23 +1067,21 @@ private struct TransferRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(payer) → \(transfer.to.name)")
                         .fontWeight(.medium)
-                    Text(amount)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(namesLabel)
+
+                    amountButton
                 }
             }
             .font(.callout)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                isMe
-                    ? "You pay \(transfer.to.name) \(amount)"
-                    : "\(transfer.from.name) pays \(transfer.to.name) \(amount)"
-            )
 
             // A visible button, not a swipe action. Settling up is the second
             // thing anyone comes to this screen to do, and hiding it behind a
             // gesture with no affordance means most people never find it.
             // `.borderless` keeps it a hit target of its own inside the row.
+            //
+            // Still the whole transfer, and still one tap. Paying in full is
+            // the common case and the thing this screen exists for, so the
+            // partial hangs off the amount instead of competing here.
             Button("Mark Paid", action: onSettle)
                 .font(.caption.weight(.semibold))
                 .buttonStyle(.borderless)
@@ -1055,6 +1091,42 @@ private struct TransferRow: View {
                         : "Mark \(transfer.from.name)'s \(amount) payment to \(transfer.to.name) as paid"
                 )
         }
+    }
+
+    /// Who pays whom, as one phrase.
+    ///
+    /// The amount used to be combined into this label. It is a control now, and
+    /// a control folded into a combined element is a control VoiceOver cannot
+    /// reach — the row would still read correctly and the action would be gone.
+    /// The figure is not lost from the reading: it is the next element across.
+    private var namesLabel: String {
+        isMe
+            ? String(localized: "You pay \(transfer.to.name)")
+            : String(localized: "\(transfer.from.name) pays \(transfer.to.name)")
+    }
+
+    /// The figure, as the way in to paying part of it.
+    ///
+    /// Tinted rather than plain, because an affordance is the entire argument
+    /// for this control existing here: the alternative was a long press, and
+    /// the reasoning above about gestures nobody finds applies to a press as
+    /// much as to a swipe. The accent colour, not the group's — a settlement
+    /// figure is the one number on this screen that must not pick up a tint
+    /// that could be read as a balance.
+    ///
+    /// A button rather than a one-item menu. The menu was the earlier guess and
+    /// costs a tap to reach a single entry; the sheet it opens is prefilled
+    /// with the full amount anyway, so tapping the figure loses nothing.
+    private var amountButton: some View {
+        Button(action: onPartial) {
+            Text(amount).monospacedDigit()
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(
+            isMe
+                ? "Pay part of \(amount) to \(transfer.to.name)"
+                : "Record part of \(transfer.from.name)'s \(amount) payment to \(transfer.to.name)"
+        )
     }
 }
 

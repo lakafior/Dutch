@@ -163,11 +163,11 @@ struct ExpenseFormView: View {
 
         if let foreign = expense.foreignAmount {
             _currencyCode = State(initialValue: foreign.currencyCode)
-            _amountText = State(initialValue: Self.decimalText(foreign.amount))
-            _rateText = State(initialValue: Self.decimalText(foreign.rate, precision: 6))
+            _amountText = State(initialValue: DecimalInput.text(foreign.amount))
+            _rateText = State(initialValue: DecimalInput.text(foreign.rate, precision: 6))
         } else {
             _currencyCode = State(initialValue: group.currency)
-            _amountText = State(initialValue: Self.decimalText(expense.amount))
+            _amountText = State(initialValue: DecimalInput.text(expense.amount))
             _rateText = State(initialValue: "")
         }
 
@@ -204,15 +204,6 @@ struct ExpenseFormView: View {
         }
     }
 
-    /// Formats a stored value for a text field.
-    ///
-    /// Grouping separators are suppressed deliberately: they would come back in
-    /// through `parseDecimal` as a stray `4 411` and turn a prefilled figure
-    /// into a silently wrong one.
-    private static func decimalText(_ value: Double, precision: Int = 2) -> String {
-        value.formatted(.number.precision(.fractionLength(0 ... precision)).grouping(.never))
-    }
-
     /// The remembered rate for a currency, as the text field wants it.
     private static func rateText(for currencyCode: String, in group: ExpenseGroup) -> String {
         guard
@@ -220,7 +211,7 @@ struct ExpenseFormView: View {
             let rate = ExpenseDefaults.lastRate(in: group, currencyCode: currencyCode)
         else { return "" }
 
-        return decimalText(rate, precision: 6)
+        return DecimalInput.text(rate, precision: 6)
     }
 
     private var store: GroupStore { GroupStore(context: context) }
@@ -484,7 +475,7 @@ struct ExpenseFormView: View {
 
     private func applyCustomTip() {
         guard
-            let typed = Self.parseDecimal(customTipText),
+            let typed = DecimalInput.parse(customTipText),
             let rate = TipRate(percent: typed)
         else { return }
         tipPercent = rate.percent
@@ -794,18 +785,7 @@ struct ExpenseFormView: View {
 
     // MARK: - Validation
 
-    /// Accepts either decimal separator. `.decimalPad` shows whichever the
-    /// device locale uses, but people type the one their keyboard muscle memory
-    /// reaches for, and the pad emits no grouping separators to confuse this.
-    private static func parseDecimal(_ text: String) -> Double? {
-        let normalized = text
-            .trimmingCharacters(in: .whitespaces)
-            .replacingOccurrences(of: ",", with: ".")
-        guard let value = Double(normalized), value > 0 else { return nil }
-        return value
-    }
-
-    private var parsedAmount: Double? { Self.parseDecimal(amountText) }
+    private var parsedAmount: Double? { DecimalInput.parse(amountText) }
 
     /// The tip as the checked type. An out-of-range `tipPercent` cannot arrive
     /// here — the menu offers only valid values and `applyCustomTip` refuses
@@ -830,7 +810,7 @@ struct ExpenseFormView: View {
     /// convert. `nil` while the rate is missing or unusable — `ForeignAmount`
     /// rejects a zero rate rather than dividing by it.
     private var foreignAmount: ForeignAmount? {
-        guard isForeign, let amount = tippedAmount, let rate = Self.parseDecimal(rateText) else {
+        guard isForeign, let amount = tippedAmount, let rate = DecimalInput.parse(rateText) else {
             return nil
         }
         return ForeignAmount(amount: amount, currencyCode: currencyCode, rate: rate)

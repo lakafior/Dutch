@@ -102,18 +102,18 @@
         }
       }
     },
-    "%@ pays %@ %@" : {
+    "%@ pays %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ pays %2$@ %3$@"
+            "value" : "%1$@ pays %2$@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ płaci %3$@ — odbiorca: %2$@"
+            "value" : "%1$@ płaci — odbiorca: %2$@"
           }
         }
       }
@@ -651,6 +651,16 @@
         }
       }
     },
+    "Amount Paid" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapłacona kwota"
+          }
+        }
+      }
+    },
     "Appearance" : {
       "localizations" : {
         "pl" : {
@@ -707,6 +717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wybierz grupę. Dutch zapamięta ostatnio otwartą."
+          }
+        }
+      }
+    },
+    "Clear amount" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyczyść kwotę"
           }
         }
       }
@@ -1300,6 +1320,22 @@
         }
       }
     },
+    "Pay part of %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pay part of %1$@ to %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapłać część z %1$@ — odbiorca: %2$@"
+          }
+        }
+      }
+    },
     "Preparing invitation…" : {
       "localizations" : {
         "pl" : {
@@ -1346,6 +1382,32 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kod QR do dołączenia do grupy: %@"
+          }
+        }
+      }
+    },
+    "Record Payment" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisz płatność"
+          }
+        }
+      }
+    },
+    "Record part of %@'s %@ payment to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Record part of %1$@'s %2$@ payment to %3$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisz część płatności %2$@ — od: %1$@, dla: %3$@"
           }
         }
       }
@@ -1589,6 +1651,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "To zaproszenie jest już nieaktualne. Grupa mogła przestać być udostępniana."
+          }
+        }
+      }
+    },
+    "That is more than the %@ outstanding." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To więcej niż pozostałe %@ do zapłaty."
           }
         }
       }
@@ -1861,6 +1933,16 @@
         }
       }
     },
+    "Up to %@. Anything less leaves the rest owing." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maksymalnie %@. Mniejsza kwota zostawia resztę do oddania."
+          }
+        }
+      }
+    },
     "Use Automatic Colour" : {
       "localizations" : {
         "pl" : {
@@ -1921,6 +2003,16 @@
         }
       }
     },
+    "You" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ty"
+          }
+        }
+      }
+    },
     "You appear to be offline. Check your connection and scan again." : {
       "localizations" : {
         "pl" : {
@@ -1951,18 +2043,12 @@
         }
       }
     },
-    "You pay %@ %@" : {
+    "You pay %@" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "You pay %1$@ %2$@"
-          }
-        },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Płacisz %2$@ — odbiorca: %1$@"
+            "value" : "Płacisz — odbiorca: %1$@"
           }
         }
       }

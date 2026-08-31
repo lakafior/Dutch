@@ -596,6 +596,73 @@ struct GroupStoreTests {
         #expect(group.expenseSet.count == 2)
     }
 
+    /// The whole of feature 23: the store was always able to write a smaller
+    /// figure, and only `TransferRow` insisted on the full one. What it must
+    /// not do is *remember* the instalment — the settlement is recomputed from
+    /// balances, so the remainder has to come back as an ordinary suggested
+    /// transfer rather than as a half-paid row.
+    @Test("Part of a debt can be paid, and the rest stays owing")
+    func partialPaymentLeavesRemainder() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        // Bob owes Alice 1000.
+        try store.addExpense(
+            title: "Flights", amount: Money(amount: 2000.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group
+        )
+        #expect(group.transfers.first?.amount == Money(cents: 100_000))
+
+        // Five instalments of 200 clear it, and nothing before the last one
+        // reports the group as settled.
+        for instalment in 1 ... 5 {
+            try store.recordPayment(from: bob, to: alice, amount: Money(amount: 200), in: group)
+
+            if instalment < 5 {
+                #expect(!group.isSettled)
+                let owed = Money(cents: 100_000 - instalment * 20_000)
+                #expect(group.transfers.first?.amount == owed)
+            }
+        }
+
+        #expect(group.isSettled)
+        #expect(group.transfers.isEmpty)
+        // Five rows to undo individually, not one lump the user cannot unpick.
+        #expect(group.expenseSet.filter(\.isReimbursement).count == 5)
+        // And still one purchase: instalments buy nothing either.
+        #expect(group.totalSpent == Money(cents: 200_000))
+    }
+
+    /// Undo is free, and per instalment. Backing one payment out restores
+    /// exactly that much of the debt and leaves the others alone.
+    @Test("Undoing one instalment restores only that instalment")
+    func undoingOneInstalment() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpense(
+            title: "Flights", amount: Money(amount: 2000.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group
+        )
+        try store.recordPayment(from: bob, to: alice, amount: Money(amount: 200), in: group)
+        try store.recordPayment(from: bob, to: alice, amount: Money(amount: 300), in: group)
+        #expect(group.transfers.first?.amount == Money(cents: 50_000))
+
+        let first = try #require(
+            group.expenseSet
+                .filter(\.isReimbursement)
+                .first { $0.amount == 200 }
+        )
+        try store.delete(first)
+
+        #expect(group.transfers.first?.amount == Money(cents: 70_000))
+        #expect(group.expenseSet.filter(\.isReimbursement).count == 1)
+    }
+
     @Test("Deleting a payment puts the debt back")
     func deletingPaymentRestoresDebt() throws {
         let store = GroupStore(context: TestStack.makeContext())
