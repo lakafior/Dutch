@@ -821,6 +821,16 @@
         }
       }
     },
+    "Date" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
+          }
+        }
+      }
+    },
     "Defaults to the group you opened last." : {
       "localizations" : {
         "pl" : {

@@ -150,18 +150,25 @@ struct GroupStore {
     /// point the user confirmed the figure they saw. `amount` is always in the
     /// group's own currency, which is what keeps the settlement single-currency
     /// and `SettlementBridge` unaware that any of this exists.
+    ///
+    /// `date` defaults to now, so the intents and `ScreenshotSeed` — which have
+    /// no field to ask with — are unchanged. It is non-optional on purpose:
+    /// the day grouping gives a dateless record its own `.distantPast` bucket
+    /// at the bottom of the log, and that bucket exists for a record caught
+    /// mid-sync, never for something a user chose.
     func addExpense(
         title: String,
         amount: Money,
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
+        on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil
     ) throws {
         let expense = Expense(context: context)
         expense.id = UUID()
-        expense.date = Date()
+        expense.date = date
         expense.group = group
 
         apply(
@@ -185,17 +192,33 @@ struct GroupStore {
     /// identity, so CloudKit sends a modification and the other devices just
     /// see the corrected figure.
     ///
-    /// `date` is deliberately untouched: an edit corrects what was recorded, it
-    /// does not move the expense to today.
+    /// `date` used to be deliberately untouched here, on the grounds that an
+    /// edit corrects what was recorded rather than moving the expense to today.
+    /// That was written when nothing could *state* a date, so the only thing an
+    /// edit could do to one was reset it silently — which is what the old rule
+    /// protected against. Now that the form carries the field, a wrong date is
+    /// exactly what somebody reopens an expense to fix.
+    ///
+    /// The invariant that survives is the one that mattered: an edit never
+    /// moves the date *implicitly*. The form seeds the picker from the stored
+    /// value, so passing it back unchanged is a no-op, and only a deliberate
+    /// change writes a different day.
+    ///
+    /// Optional so a caller with no date field — an intent, a future screen —
+    /// keeps the old behaviour of leaving it alone rather than silently
+    /// stamping today, which is the one failure the original comment named.
     func update(
         _ expense: Expense,
         title: String,
         amount: Money,
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
+        on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil
     ) throws {
+        if let date { expense.date = date }
+
         apply(
             title: title,
             amount: amount,
@@ -219,15 +242,21 @@ struct GroupStore {
     ///
     /// `isReimbursement` exists only so the screens can tell the two apart: a
     /// payment is not spending, and must not inflate the group's total.
+    ///
+    /// `date` defaults to now, and the sheet offers it for the same reason the
+    /// expense form does: *"I paid her back last Tuesday"* is as ordinary a
+    /// sentence as backdating a receipt, and a payment logged today when it
+    /// happened on Tuesday lands in the wrong day of the same log.
     func recordPayment(
         from payer: Person,
         to recipient: Person,
         amount: Money,
-        in group: ExpenseGroup
+        in group: ExpenseGroup,
+        on date: Date = Date()
     ) throws {
         let payment = Expense(context: context)
         payment.id = UUID()
-        payment.date = Date()
+        payment.date = date
         payment.group = group
         payment.isReimbursement = true
         // Carried so a client still on the old model — which knows nothing

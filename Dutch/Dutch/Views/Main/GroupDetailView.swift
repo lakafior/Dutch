@@ -196,8 +196,8 @@ struct GroupDetailView: View {
                 transfer: transfer,
                 currencyCode: group.currency,
                 isMe: transfer.from.id == me?.id
-            ) { amount in
-                record(transfer, amount: amount, in: contents)
+            ) { amount, date in
+                record(transfer, amount: amount, on: date, in: contents)
             }
         }
         .confirmationDialog(
@@ -668,13 +668,19 @@ struct GroupDetailView: View {
     /// A transfer naming somebody who is no longer in the group can't be
     /// recorded, and silently doing nothing would look like the tap missed.
     ///
-    /// `amount` defaults to the whole transfer, which is what the button
-    /// passes. `PartialPaymentSheet` passes less. Nothing below this line
+    /// `amount` and `date` default to the whole transfer and to now, which is
+    /// what the button passes — it has no form to ask with and must stay one
+    /// tap. `PartialPaymentSheet` passes both. Nothing below this line
     /// tells the two apart: a payment is an ordinary expense flagged
     /// `isReimbursement`, and the settlement recomputes from balances, so
     /// five instalments clear a debt exactly as one payment does — and the
     /// swipe-to-undo on each row backs them out one at a time.
-    private func record(_ transfer: Transfer, amount: Money? = nil, in contents: Contents) {
+    private func record(
+        _ transfer: Transfer,
+        amount: Money? = nil,
+        on date: Date = Date(),
+        in contents: Contents
+    ) {
         guard
             let payer = contents.person[transfer.from.id],
             let recipient = contents.person[transfer.to.id]
@@ -688,7 +694,8 @@ struct GroupDetailView: View {
                 from: payer,
                 to: recipient,
                 amount: amount ?? transfer.amount,
-                in: group
+                in: group,
+                on: date
             )
             addCount += 1
         } catch {

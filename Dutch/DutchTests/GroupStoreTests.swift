@@ -548,6 +548,126 @@ struct GroupStoreTests {
         #expect(expense.shareWeights.count == 2)
     }
 
+    // MARK: - Dating an expense
+
+    /// The point of the feature: somebody installs Dutch on day three of a trip
+    /// and wants days one and two in it. Nothing in the model changed for this
+    /// — `Expense.date` has been an optional `Date` since v1 — so what is worth
+    /// asserting is that the parameter reaches storage at all.
+    @Test("An expense can be recorded as having happened earlier")
+    func expenseCanBeBackdated() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        let tuesday = Date(timeIntervalSinceNow: -5 * 24 * 60 * 60)
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice], in: group, on: tuesday
+        )
+
+        let expense = try #require(group.expenseSet.first)
+        #expect(expense.date == tuesday)
+    }
+
+    /// The default is what keeps the intents and `ScreenshotSeed` — neither of
+    /// which has a field to ask with — working unchanged.
+    @Test("Leaving the date out still stamps now")
+    func addedExpenseDefaultsToNow() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        let before = Date()
+        try store.addExpense(
+            title: "Coffee", amount: Money(amount: 4.00),
+            paidBy: alice, splitAmong: [alice], in: group
+        )
+
+        let stored = try #require(group.expenseSet.first?.date)
+        #expect(stored >= before)
+        #expect(stored <= Date())
+    }
+
+    /// The invariant that survived inverting `update`'s old rule: an edit may
+    /// move the date, but never *implicitly*. The form passes `nil` when its
+    /// picker was not touched, and a dateless record — one caught mid-sync —
+    /// must come out of an unrelated edit still dateless rather than stamped
+    /// with today.
+    @Test("An edit that doesn't mention the date leaves it exactly as it was")
+    func updateWithoutDateLeavesItAlone() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        let tuesday = Date(timeIntervalSinceNow: -5 * 24 * 60 * 60)
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice], in: group, on: tuesday
+        )
+        let expense = try #require(group.expenseSet.first)
+
+        try store.update(
+            expense, title: "Airport taxi", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice]
+        )
+        #expect(expense.date == tuesday)
+
+        // And the dateless case, which is the one the old comment protected.
+        expense.date = nil
+        try store.update(
+            expense, title: "Taxi to hotel", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice]
+        )
+        #expect(expense.date == nil)
+    }
+
+    @Test("An edit that does mention the date moves it")
+    func updateWithDateMovesIt() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice], in: group
+        )
+        let expense = try #require(group.expenseSet.first)
+
+        let monday = Date(timeIntervalSinceNow: -6 * 24 * 60 * 60)
+        try store.update(
+            expense, title: "Taxi", amount: Money(amount: 40.00),
+            paidBy: alice, splitAmong: [alice], on: monday
+        )
+
+        #expect(expense.date == monday)
+    }
+
+    /// Settling up gets the same field, from the same sheet that carries the
+    /// partial amount.
+    @Test("A payment can be recorded as having happened earlier")
+    func paymentCanBeBackdated() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 30.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group
+        )
+
+        let tuesday = Date(timeIntervalSinceNow: -5 * 24 * 60 * 60)
+        try store.recordPayment(
+            from: bob, to: alice, amount: Money(amount: 15.00), in: group, on: tuesday
+        )
+
+        let payment = try #require(group.expenseSet.first { $0.isReimbursement })
+        #expect(payment.date == tuesday)
+        // Backdating settles it just the same — the maths never reads the date.
+        #expect(group.isSettled)
+    }
+
     // MARK: - Settling up
 
     /// The whole design rests on this: a payment is an ordinary expense paid by

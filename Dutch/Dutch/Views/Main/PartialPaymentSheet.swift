@@ -31,7 +31,7 @@ struct PartialPaymentSheet: View {
     let currencyCode: String
     /// Whether the payment is one *this* device's owner has to make.
     let isMe: Bool
-    let onRecord: (Money) -> Void
+    let onRecord: (Money, Date) -> Void
 
     /// Prefilled with the whole transfer, for the inverse of the reason the
     /// duplicate form leaves the payer empty: there the blank field is the one
@@ -41,11 +41,20 @@ struct PartialPaymentSheet: View {
     @State private var amountText: String
     @FocusState private var amountFocused: Bool
 
+    /// When the money changed hands. *"I paid her back last Tuesday"* is as
+    /// ordinary a sentence as backdating a receipt, and a payment stamped today
+    /// lands in the wrong day of the same log the expenses are filed in.
+    ///
+    /// Only here, never on **Mark Paid**. That button is the common case and
+    /// has to stay one tap; somebody settling on a different day is already
+    /// opening this sheet.
+    @State private var date = Date()
+
     init(
         transfer: Transfer,
         currencyCode: String,
         isMe: Bool,
-        onRecord: @escaping (Money) -> Void
+        onRecord: @escaping (Money, Date) -> Void
     ) {
         self.transfer = transfer
         self.currencyCode = currencyCode
@@ -153,6 +162,26 @@ struct PartialPaymentSheet: View {
                             .foregroundStyle(.secondary)
                             .accessibilityHidden(true)
                     }
+
+                    // Bounded at today for the same reason the expense form is:
+                    // a payment is something that happened, and the error worth
+                    // catching is the fat-fingered year. No `max` against a
+                    // seeded value here — this record is always new, so there is
+                    // no stored date that could already sit outside the range.
+                    //
+                    // A step down in weight, matching what `ExpenseFormView`
+                    // does to every row it can be saved without. The sheet has
+                    // exactly two rows and only one of them is the point; drawn
+                    // level, they would read as two equal questions.
+                    DatePicker(
+                        selection: $date,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    ) {
+                        Text("Date")
+                    }
+                    .datePickerStyle(.compact)
+                    .font(.subheadline)
                 } header: {
                     Text(header)
                 } footer: {
@@ -171,14 +200,14 @@ struct PartialPaymentSheet: View {
                 }
             }
         }
-        .presentationDetents([.height(260), .medium])
+        .presentationDetents([.height(320), .medium])
         .presentationDragIndicator(.visible)
         .task { amountFocused = true }
     }
 
     private func record() {
         guard let entered, !isOverFull else { return }
-        onRecord(entered)
+        onRecord(entered, date)
         dismiss()
     }
 }
@@ -194,6 +223,6 @@ struct PartialPaymentSheet: View {
                 ),
                 currencyCode: "USD",
                 isMe: true
-            ) { print("record \($0)") }
+            ) { amount, date in print("record \(amount) on \(date)") }
         }
 }

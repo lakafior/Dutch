@@ -81,6 +81,15 @@ struct ExpenseFormView: View {
     /// and on a duplicate: the tip is folded into the stored amount, so the
     /// figure in the field above is already the tipped one, and re-offering a
     /// percentage would apply it a second time.
+    /// When the expense happened. Never optional here: the picker cannot
+    /// produce "no date", and the log's dateless bucket is for records caught
+    /// mid-sync, not for something a user chose.
+    @State private var date: Date
+    /// What the picker started at, so `save` can tell a deliberate change from
+    /// an untouched field. Passing the date back unconditionally would stamp
+    /// today onto a dateless record the moment somebody edited its title.
+    private let seedDate: Date
+
     @State private var tipPercent: Double = 0
     @State private var showingCustomTip = false
     @State private var customTipText = ""
@@ -114,6 +123,10 @@ struct ExpenseFormView: View {
         _title = State(initialValue: "")
         _amountText = State(initialValue: "")
         _splitsEvenly = State(initialValue: true)
+
+        let now = Date()
+        _date = State(initialValue: now)
+        self.seedDate = now
 
         // Mid-trip, the next expense is almost always in the same currency as
         // the last one, at the same rate. Entering ten Polish receipts should
@@ -170,6 +183,15 @@ struct ExpenseFormView: View {
             _amountText = State(initialValue: DecimalInput.text(expense.amount))
             _rateText = State(initialValue: "")
         }
+
+        // An edit reopens on the day it was recorded; a duplicate starts today.
+        // The duplicate is the interesting half: it carries everything else
+        // over, but a round logged tonight from last Tuesday's receipt would
+        // land in Tuesday's bucket — which is the exact filing error this field
+        // exists to prevent, reintroduced by the prefill meant to save typing.
+        let seeded = editing == nil ? Date() : (expense.date ?? Date())
+        _date = State(initialValue: seeded)
+        self.seedDate = seeded
 
         // An expense with no stored weighting is an even split, and a uniform
         // weighting is stored as none at all — so the toggle starts on exactly
@@ -325,18 +347,25 @@ struct ExpenseFormView: View {
 
     // MARK: - Sections
 
-    /// The step down in weight given to every row that *qualifies* the amount
-    /// rather than being it.
+    /// The step down in weight given to every row the form can be saved
+    /// without.
     ///
-    /// Title and Amount are what an expense is made of; Tip, Currency and the
-    /// rate are adjustments to the figure above them, and in the ordinary case
-    /// — a single-currency group buying a round with no service charge on it —
-    /// none of the three is touched at all. Drawn at the same weight as the
-    /// amount they modify, they read as four equally important questions on a
-    /// form whose entire purpose is one number.
+    /// Title and Amount are what an expense is made of; Tip, Currency, the rate
+    /// and the date are all rows that already have an answer when the sheet
+    /// opens, and in the ordinary case — a single-currency group buying a round
+    /// today with no service charge on it — not one of the four is touched.
+    /// Drawn at the same weight as the amount, they read as five equally
+    /// important questions on a form whose entire purpose is one number.
+    ///
+    /// The rule used to be narrower: *qualifies the amount rather than being
+    /// it*, which was true of the first three and made the date look like an
+    /// exception when it arrived. It isn't one. What the four have in common is
+    /// that they are prefilled and optional, and that is the property worth
+    /// drawing — a required field the user must answer and a defaulted one they
+    /// may ignore should not carry the same weight.
     ///
     /// One step of the type scale, not a hand-picked size, so Larger Text keeps
-    /// scaling all of it. Defined here rather than repeated at the three call
+    /// scaling all of it. Defined here rather than repeated at the four call
     /// sites because the decision is "these are secondary", and it should be
     /// possible to change that in one place.
     private func qualifier<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -358,6 +387,7 @@ struct ExpenseFormView: View {
             tipRow
             currencyRow
             rateRow
+            dateRow
         } header: {
             Text(.expenseDetails)
         } footer: {
@@ -369,6 +399,52 @@ struct ExpenseFormView: View {
                     .motionContentTransition(.numericText())
             }
         }
+    }
+
+    /// When it happened.
+    ///
+    /// Last, below the amount and the rows adjusting it. The amount leading the
+    /// form was a first-feedback-batch decision and the right one — it is the
+    /// only field the form cannot be saved without — so nothing goes above it,
+    /// and this is the least often touched of the four rows under it.
+    ///
+    /// A `qualifier`, like Tip and Currency: the form opens with today already
+    /// in it and saves perfectly well without the row being touched, and a
+    /// prefilled optional row at the same weight as the one field Save depends
+    /// on overstates it.
+    ///
+    /// `.compact` shows the real date rather than a *Today* placeholder, so the
+    /// capability is visible without occupying the screen: somebody who never
+    /// needs it reads one extra line, and somebody adopting the app on day three
+    /// of a trip can see that days one and two are enterable.
+    private var dateRow: some View {
+        qualifier {
+            DatePicker(
+                selection: $date,
+                in: ...latestSelectableDate,
+                displayedComponents: .date
+            ) {
+                Text("Date")
+            }
+            .datePickerStyle(.compact)
+        }
+    }
+
+    /// Today, except when an expense already carries a later date.
+    ///
+    /// An expense is something that happened, so the future is not offered: the
+    /// error a bound catches is the fat-fingered year, which is invisible
+    /// afterwards because it sorts to the top of the log and stays there. This
+    /// is the tip cap's reasoning — a bound is for the typo, not the tipper.
+    ///
+    /// The `max` is not decoration. A stored date already beyond now — an older
+    /// client, a skewed clock — would sit outside a bare `...Date()` range, and
+    /// the picker resolves that by clamping, which is precisely the silent move
+    /// of somebody else's data that `update` is written to prevent. Widening the
+    /// range for a value that is already there costs nothing: it still cannot be
+    /// *chosen*, only kept.
+    private var latestSelectableDate: Date {
+        max(seedDate, Date())
     }
 
     private var amountRow: some View {
@@ -906,6 +982,11 @@ struct ExpenseFormView: View {
                     amount: amount,
                     paidBy: payer,
                     splitAmong: selectedParticipants,
+                    // Only when it actually moved. An untouched picker passes
+                    // `nil`, which leaves the stored value exactly as it was —
+                    // including leaving a dateless record dateless, rather than
+                    // stamping today on it for fixing a typo in the title.
+                    on: date == seedDate ? nil : date,
                     paidIn: foreign,
                     shares: weights
                 )
@@ -916,6 +997,7 @@ struct ExpenseFormView: View {
                     paidBy: payer,
                     splitAmong: selectedParticipants,
                     in: group,
+                    on: date,
                     paidIn: foreign,
                     shares: weights
                 )
