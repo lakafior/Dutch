@@ -802,8 +802,47 @@ carries the category over, unlike the date: four people taking turns at the bar
 are filing four *Drinks*, and that is exactly the retyping Duplicate exists to
 save.
 
-*Cost: unmeasured. One attribute, twelve cases, fourteen strings in both
-languages.*
+**The glyph on the row was too quiet, and the field did no work.** Both were
+reported by the first person to use categories on real expenses — *"we can
+select a category but can't see it anywhere"* — and they are two failures, not
+one. The row glyph was `.caption`/`.secondary`, drawn on the reasoning that the
+log is scanned and the picker is where glyphs are learned; in practice it was
+invisible. It is level with the title it sits beside now.
+
+The second failure was the real one: an expense could be filed and nothing ever
+read the filing. So the summary section grew a **breakdown** — spend per
+category, biggest first, uncategorised always last however large, with a bar
+per row. Uncategorised sorts last because it is the absence of an answer rather
+than one of the answers, and heading the list with it would make the first line
+the one that says nothing. Hidden entirely until something has been
+categorised, since a group nobody files gets one bar equal to the total two
+lines above it.
+
+It is computed in `Contents`, in the pass that already walks the log — a
+breakdown recomputed in the section's body would re-walk it on every redraw, and
+this screen redraws on every tap. Reimbursements are excluded exactly as they
+are from Total Spent: counting a settle-up would attribute the same money twice.
+
+**The ordering lives in DutchKit, and moving it there found a bug.** It began as
+a `sorted(by:)` inside a view body, which is untestable — `Contents` is private
+to `GroupDetailView`. `SpendBreakdown.slices(of:)` is generic over the bucket,
+so it needs nothing the app knows, and the nine tests on it pin the rules that
+were previously only assertions in a comment. The bug: `sorted(by:)` is **not
+stable in Swift**, and the original comparator returned `lhs.total > rhs.total`
+with no tie-break — two categories coming to the same figure could swap places
+between one redraw and the next, on a screen that redraws on every tap. Ties now
+break on the key. The zero-total guard moved with it, so `0/0` producing a `nan`
+fraction that draws as nothing is covered by a test rather than by a ternary at
+the call site.
+
+The bar is the group's own tint, not a colour per category. Twelve categories
+would need twelve colours, the palette has eight and deliberately excludes the
+two the balances spend, and a chart that reuses its colours every eight rows
+tells the reader nothing.
+
+*Cost: 34 KB archived for the breakdown and the two fixes together — see the
+size note under **Archive a group**. One attribute, twelve cases, fifteen
+strings in both languages.*
 
 ### Member avatars from SF Symbols
 
@@ -817,6 +856,17 @@ library.
 still derives initials from the name that is already there and a colour from the
 id that is already there; the glyph is an override on top. A roster of identical
 `person.fill` circles would be worse than what it replaced.
+
+**Forty-eight symbols, and the count is close to free.** Twenty-four was the
+number a group needed; a member picking a personal emblem wants more range.
+Measured 2026-08-31, going to forty-eight cost **1,549 bytes** — 32 of them in
+the binary, the rest in the two `.strings` files. The archive did not move at
+block granularity. The glyphs ship with the OS, so the price of a symbol is its
+*name in two languages* and nothing else, which is worth knowing before anyone
+argues about the list on size grounds again. Every case existed by iOS 16,
+comfortably under the iOS 17 floor: a name the running OS has never heard of
+renders as nothing at all, so the list rules that out by construction rather
+than catching it at runtime.
 
 **The group's set is now shared rather than copied.** `GroupSymbol` became
 `Emblem`, for the reason `PaletteColorGrid` is one grid: two curated lists drift
@@ -866,6 +916,17 @@ enum and rewriting every push for a list most people open once. Collapsed on
 every launch, and absent entirely until something is in it — a permanent
 *Archived (0)* is a row explaining a feature nobody has used.
 
+**The swipe was not enough, and that was predictable.** Shipped as a leading
+swipe and nothing else, the first question back was *"how do I archive a
+group?"* — which is the failure `TransferRow` already carries a comment about: a
+gesture with no affordance is a feature most people never find. It is in the
+**Edit Group** sheet now, which is where somebody finishing with a trip looks,
+and the swipe stays as the fast path for anyone who knows it is there. Not
+drawn `.destructive`: archiving destroys nothing and one tap in the same place
+undoes it, so red would read as the delete this deliberately is not. Archiving
+from the sheet leaves the screen open, because popping back to the list would
+itself read as a delete.
+
 **On the leading edge, opposite Delete.** Archiving is the *un*-destructive half
 of "I am finished with this trip", and putting it under the same thumb sweep as
 the action that destroys every expense in the group is how a swipe becomes
@@ -873,7 +934,14 @@ something people stop doing. The two `onDelete` handlers now index their own
 section's array rather than the fetch, which is the bug two sections over one
 `FetchedResults` would otherwise have introduced silently.
 
-*Cost: unmeasured. One attribute, one store method, three strings.*
+*Cost: one attribute, one store method, five strings.*
+
+*Measured for all three of Dutch 7 plus the category breakdown, 2026-08-31:
+**1,752 KB → 1,780 KB** archived, the last 20 KB being the archive control in
+the Edit Group sheet and the breakdown's move into DutchKit. The code added 34 KB and
+`ASSETCATALOG_COMPILER_STANDALONE_ICON_BEHAVIOR = none` gave 28 KB back, so the
+net is +8 KB — the icon saving paid for the breakdown and very little else.
+288 KB of the 2 MB ceiling remains.*
 
 ---
 

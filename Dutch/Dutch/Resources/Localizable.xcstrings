@@ -243,6 +243,22 @@
         }
       }
     },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "pl" : {
@@ -276,12 +292,6 @@
         "pl" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld zarchiwizowana"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -292,6 +302,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld zarchiwizowanych"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld zarchiwizowana"
                 }
               },
               "other" : {
@@ -729,6 +745,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Archiwizuj"
+          }
+        }
+      }
+    },
+    "Archive Group" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiwizuj grupę"
           }
         }
       }
@@ -1953,6 +1979,16 @@
         }
       }
     },
+    "Unarchive Group" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywróć grupę"
+          }
+        }
+      }
+    },
     "Undated" : {
       "localizations" : {
         "pl" : {
@@ -2378,6 +2414,23 @@
         }
       }
     },
+    "archiveExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folds this group away on the list. Nothing is deleted, and everyone still sees it."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwija tę grupę na liście. Nic nie zostaje usunięte i wszyscy nadal ją widzą."
+          }
+        }
+      }
+    },
     "category" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2612,6 +2665,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transport"
+          }
+        }
+      }
+    },
+    "categoryUncategorised" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncategorised"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bez kategorii"
           }
         }
       }
@@ -3434,6 +3504,23 @@
         }
       }
     },
+    "symbolAnt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ant"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mrówka"
+          }
+        }
+      }
+    },
     "symbolBag" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3464,6 +3551,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plaża"
+          }
+        }
+      }
+    },
+    "symbolBicycle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bicycle"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rower"
+          }
+        }
+      }
+    },
+    "symbolBird" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bird"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ptak"
+          }
+        }
+      }
+    },
+    "symbolBook" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Książka"
           }
         }
       }
@@ -3502,6 +3640,23 @@
         }
       }
     },
+    "symbolCamera" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aparat"
+          }
+        }
+      }
+    },
     "symbolCar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3515,6 +3670,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Samochód"
+          }
+        }
+      }
+    },
+    "symbolCloud" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cloud"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chmura"
           }
         }
       }
@@ -3536,6 +3708,57 @@
         }
       }
     },
+    "symbolCrown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crown"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korona"
+          }
+        }
+      }
+    },
+    "symbolDrop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kropla"
+          }
+        }
+      }
+    },
+    "symbolDumbbell" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dumbbell"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hantle"
+          }
+        }
+      }
+    },
     "symbolFerry" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3553,6 +3776,40 @@
         }
       }
     },
+    "symbolFish" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fish"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ryba"
+          }
+        }
+      }
+    },
+    "symbolFlame" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flame"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Płomień"
+          }
+        }
+      }
+    },
     "symbolGames" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3566,6 +3823,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gry"
+          }
+        }
+      }
+    },
+    "symbolGuitar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guitar"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gitara"
+          }
+        }
+      }
+    },
+    "symbolHare" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hare"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zając"
+          }
+        }
+      }
+    },
+    "symbolHeart" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heart"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serce"
           }
         }
       }
@@ -3600,6 +3908,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Klucz"
+          }
+        }
+      }
+    },
+    "symbolLadybug" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ladybug"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biedronka"
           }
         }
       }
@@ -3651,6 +3976,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mapa"
+          }
+        }
+      }
+    },
+    "symbolMoon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moon"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Księżyc"
           }
         }
       }
@@ -3740,6 +4082,23 @@
         }
       }
     },
+    "symbolRunning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bieganie"
+          }
+        }
+      }
+    },
     "symbolShoppingCart" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3774,6 +4133,57 @@
         }
       }
     },
+    "symbolSparkles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparkles"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iskry"
+          }
+        }
+      }
+    },
+    "symbolSports" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sports"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sport"
+          }
+        }
+      }
+    },
+    "symbolStar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Star"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gwiazda"
+          }
+        }
+      }
+    },
     "symbolSuitcase" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3787,6 +4197,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Walizka"
+          }
+        }
+      }
+    },
+    "symbolSun" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sun"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Słońce"
           }
         }
       }
@@ -3808,6 +4235,40 @@
         }
       }
     },
+    "symbolTheatre" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theatre"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teatr"
+          }
+        }
+      }
+    },
+    "symbolTortoise" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tortoise"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Żółw"
+          }
+        }
+      }
+    },
     "symbolTram" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3821,6 +4282,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tramwaj"
+          }
+        }
+      }
+    },
+    "symbolWalking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Walking"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spacer"
           }
         }
       }
@@ -3902,6 +4380,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wydano łącznie"
+          }
+        }
+      }
+    },
+    "unarchiveExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts this group back on the list."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywraca tę grupę na listę."
           }
         }
       }

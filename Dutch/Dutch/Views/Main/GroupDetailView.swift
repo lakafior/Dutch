@@ -189,7 +189,9 @@ struct GroupDetailView: View {
             ShareGroupView(group: group)
         }
         .sheet(isPresented: $showingEditGroup) {
-            EditGroupSheet(group: group, onSave: updateGroup)
+            EditGroupSheet(group: group, onSave: updateGroup) { archived in
+                setArchived(archived)
+            }
         }
         .sheet(item: $partialTarget) { transfer in
             PartialPaymentSheet(
@@ -210,6 +212,7 @@ struct GroupDetailView: View {
         } message: {
             Text(deletionMessage)
         }
+        .environment(\.expenseGroupTint, group.appearance.color.tint)
         .sensoryFeedback(.success, trigger: addCount)
         .errorBanner($errorMessage)
         // Resolved against the current roster on every appearance, so an
@@ -309,6 +312,8 @@ struct GroupDetailView: View {
             .animation(.snappy, value: contents.totalSpent)
             .accessibilityElement(children: .combine)
 
+            breakdown(contents)
+
             // Withheld until there is something to summarise: the shared text
             // is the total and the payments settling it, and neither exists yet.
             //
@@ -326,6 +331,39 @@ struct GroupDetailView: View {
                 }
                 .accessibilityHint("Copies who owes whom, the total and the expense list as text")
             }
+        }
+    }
+
+    /// Where the money went.
+    ///
+    /// The answer to what a category is *for*. Before this, an expense could be
+    /// filed and the app never used the filing — a labelled field that did no
+    /// work, which is exactly how it was reported.
+    ///
+    /// Only once something has been categorised. A group nobody files gets a
+    /// single **Uncategorised** bar equal to the total it already read two lines
+    /// above, which is a chart of one fact repeated.
+    ///
+    /// In the summary section rather than on a screen of its own: it belongs
+    /// under the total it decomposes, it costs no navigation, and a breakdown
+    /// behind a push is one most people would never open — the same argument
+    /// that keeps **Share Summary** here instead of in the toolbar.
+    @ViewBuilder
+    private func breakdown(_ contents: Contents) -> some View {
+        let rows = contents.spendByCategory
+        if rows.contains(where: { $0.key != nil }) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(rows, id: \.key) { row in
+                    BreakdownRow(
+                        category: row.key,
+                        total: row.total,
+                        fraction: row.fraction,
+                        currencyCode: group.currency
+                    )
+                }
+            }
+            .padding(.vertical, 4)
+            .animation(.snappy, value: contents.totalSpent)
         }
     }
 
@@ -637,6 +675,17 @@ struct GroupDetailView: View {
         }
     }
 
+    /// Archiving from here leaves the screen open on purpose. The group has not
+    /// gone anywhere — it is still being looked at, and popping back to the list
+    /// would read as a delete.
+    private func setArchived(_ archived: Bool) {
+        do {
+            try store.setArchived(archived, for: group)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Takes back a recorded settlement, restoring the debt it cleared.
     ///
     /// Deleting the payment is the whole of it: the settlement maths has no
@@ -851,6 +900,19 @@ private struct Contents {
     /// How many of the expenses are actual spending rather than settling up.
     let spendingCount: Int
 
+    /// Where the money went, ready to draw — see `SpendBreakdown.slices(of:)`
+    /// for the ordering rules and why they are in the package rather than here.
+    ///
+    /// Computed in the same pass everything else on this screen is, because a
+    /// breakdown recomputed inside the summary section's body would walk the
+    /// whole log again on every redraw — and this screen redraws on every tap.
+    ///
+    /// Reimbursements are excluded, as they are from `totalSpent`. A settle-up
+    /// buys nothing, so a category breakdown that counted it would attribute
+    /// money to a category twice: once when it was spent and once when somebody
+    /// paid their share back.
+    let spendByCategory: [SpendSlice<ExpenseCategory>]
+
     /// Members keyed by id, so recording a payment can get from the `Transfer`
     /// the settlement produced back to the `Person` the store needs to write.
     let person: [UUID: Person]
@@ -899,6 +961,13 @@ private struct Contents {
         spendingCount = settlement.spendingCount
 
         summary = group.summary(from: settlement, expenses: log, memberCount: roster.count)
+
+        spendByCategory = SpendBreakdown.slices(
+            of: log
+                .lazy
+                .filter { !$0.isReimbursement }
+                .map { (key: $0.category, amount: Money(amount: $0.amount)) }
+        )
     }
 }
 
@@ -1142,6 +1211,89 @@ private struct TransferRow: View {
     }
 }
 
+/// One line of the spend breakdown: what it was, how much, and how much of the
+/// total that is.
+///
+/// The bar earns its place by answering the question the figures alone don't —
+/// *most of this trip was accommodation* is a glance, where four amounts in a
+/// column is arithmetic. It is the group's own tint rather than a colour per
+/// category: twelve categories would need twelve colours, the palette has eight
+/// and deliberately excludes the two the balances already spend, and a chart
+/// whose colours are reused every eight rows tells the reader nothing.
+private struct BreakdownRow: View {
+    let category: ExpenseCategory?
+    let total: Money
+    /// In `0...1`, and never `nan` — `SpendBreakdown` guards the zero-total case
+    /// so this view does not have to.
+    let fraction: Double
+    let currencyCode: String
+
+    @Environment(\.expenseGroupTint) private var tint
+
+    private var name: String {
+        category.map { String(localized: $0.label) } ?? String(localized: .categoryUncategorised)
+    }
+
+    private var amount: String { total.formatted(currencyCode: currencyCode) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: category?.systemName ?? "questionmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+
+                Text(name)
+                    .font(.subheadline)
+
+                Spacer(minLength: 12)
+
+                Text(amount)
+                    .font(.subheadline)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+
+            // A capsule in a `GeometryReader`-free layout: the track is the full
+            // width and the fill is a fraction of it, so nothing has to measure
+            // anything. `.frame(height:)` on the stack keeps the reader from
+            // stretching the row.
+            GeometryReader { proxy in
+                Capsule()
+                    .fill(tint.gradient)
+                    .frame(width: max(0, proxy.size.width * fraction))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(alignment: .leading) {
+                        Capsule().fill(.fill.quaternary)
+                    }
+            }
+            .frame(height: 4)
+        }
+        // One element, one sentence. Read child by child this is a glyph, a
+        // word, a figure and an unlabelled bar — where the bar is the one part
+        // with nothing to say out loud.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name), \(amount)")
+    }
+}
+
+/// The tint of the group being looked at, so a row deep in the hierarchy can
+/// carry it without every intermediate view passing it down.
+///
+/// Defaults to `.accentColor`, which is what a preview or a stray call site
+/// gets — never a hardcoded blue that would silently disagree with a group.
+private struct ExpenseGroupTintKey: EnvironmentKey {
+    static let defaultValue: Color = .accentColor
+}
+
+extension EnvironmentValues {
+    fileprivate var expenseGroupTint: Color {
+        get { self[ExpenseGroupTintKey.self] }
+        set { self[ExpenseGroupTintKey.self] = newValue }
+    }
+}
+
 // MARK: - Expense Row
 
 private struct ExpenseRow: View {
@@ -1192,11 +1344,16 @@ private struct ExpenseRow: View {
     private var categoryMark: some View {
         if let category = expense.category {
             Image(systemName: category.systemName)
-                .font(.caption)
+                // `.caption` first time round, which was too quiet to find: the
+                // first person to use categories on real expenses reported not
+                // being able to see them anywhere. Level with the title it sits
+                // beside, still `.secondary` so it labels the row rather than
+                // competing with it.
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 // Sized so a wide glyph and a narrow one leave the titles
                 // beside them starting in the same place.
-                .frame(width: 16)
+                .frame(width: 18)
                 .accessibilityLabel(Text(category.label))
         }
     }

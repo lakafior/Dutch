@@ -81,6 +81,18 @@ enum PaletteColor: String, CaseIterable, Identifiable {
 ///
 /// Ordered by theme, because that is how someone scanning for "the ski trip one"
 /// looks for it.
+///
+/// Forty-eight of them, and the count is close to free to grow: the glyphs ship
+/// with the OS, so a case costs a raw value, a switch arm and one localized
+/// name. Going from twenty-four to forty-eight was measured on 2026-08-31 at
+/// **1,549 bytes** — 32 of them in the binary and the rest in the two
+/// `.strings` files, which is to say the cost of a symbol is its *name in two
+/// languages* and nothing else. The archive did not move at all. Grow this list
+/// when there is a reason to; the budget is not one.
+/// Every case here existed by iOS 16, comfortably under the iOS 17 floor: a name
+/// the running OS has never heard of renders as **nothing at all**, which is the
+/// one failure mode this list has to rule out by construction rather than catch
+/// at runtime.
 enum Emblem: String, CaseIterable, Identifiable {
     // Getting there
     case airplane
@@ -113,6 +125,38 @@ enum Emblem: String, CaseIterable, Identifiable {
     case cake = "birthday.cake.fill"
     case music = "music.note"
     case games = "gamecontroller.fill"
+
+    // Creatures
+    case hare = "hare.fill"
+    case tortoise = "tortoise.fill"
+    case bird = "bird.fill"
+    case fish = "fish.fill"
+    case ladybug = "ladybug.fill"
+    case ant = "ant.fill"
+
+    // Sky and elements
+    case sun = "sun.max.fill"
+    case moon = "moon.fill"
+    case cloud = "cloud.fill"
+    case flame = "flame.fill"
+    case drop = "drop.fill"
+    case sparkles
+
+    // Doing things
+    case walking = "figure.walk"
+    case running = "figure.run"
+    case bicycle
+    case sports = "sportscourt.fill"
+    case dumbbell = "dumbbell.fill"
+    case guitar = "guitars.fill"
+
+    // Things to have
+    case camera = "camera.fill"
+    case book = "book.fill"
+    case heart = "heart.fill"
+    case star = "star.fill"
+    case crown = "crown.fill"
+    case theatre = "theatermasks.fill"
 
     var id: String { rawValue }
 
@@ -148,6 +192,30 @@ enum Emblem: String, CaseIterable, Identifiable {
         case .cake: .symbolCake
         case .music: .symbolMusic
         case .games: .symbolGames
+        case .hare: .symbolHare
+        case .tortoise: .symbolTortoise
+        case .bird: .symbolBird
+        case .fish: .symbolFish
+        case .ladybug: .symbolLadybug
+        case .ant: .symbolAnt
+        case .sun: .symbolSun
+        case .moon: .symbolMoon
+        case .cloud: .symbolCloud
+        case .flame: .symbolFlame
+        case .drop: .symbolDrop
+        case .sparkles: .symbolSparkles
+        case .walking: .symbolWalking
+        case .running: .symbolRunning
+        case .bicycle: .symbolBicycle
+        case .sports: .symbolSports
+        case .dumbbell: .symbolDumbbell
+        case .guitar: .symbolGuitar
+        case .camera: .symbolCamera
+        case .book: .symbolBook
+        case .heart: .symbolHeart
+        case .star: .symbolStar
+        case .crown: .symbolCrown
+        case .theatre: .symbolTheatre
         }
     }
 }

@@ -22,7 +22,16 @@ import SwiftUI
 /// and an expense whose category a newer version of the app invented still
 /// splits correctly here — see `Expense.category`, which falls back to `nil`
 /// rather than to a placeholder.
-enum ExpenseCategory: String, CaseIterable, Identifiable {
+///
+/// `Comparable` only so `SpendBreakdown` has a decided tie-break when two
+/// categories come to the same figure. Ordering by raw value is arbitrary as
+/// *meaning*, and that is fine — its whole job is to be the same answer twice,
+/// so a chart of equal bars does not reshuffle between redraws.
+enum ExpenseCategory: String, CaseIterable, Identifiable, Comparable {
+    static func < (lhs: ExpenseCategory, rhs: ExpenseCategory) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
     case dining = "fork.knife"
     case groceries = "cart.fill"
     case drinks = "wineglass.fill"
