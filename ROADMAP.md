@@ -86,6 +86,7 @@ recorded.
 | 12 | Not started | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | The hardest control in the app — it needs a running remainder on screen and a decided answer for when the fixed amounts overshoot. Asked for directly, twice. | Model change; do it in one version 7 with **16** and **21** |
 | 16 | Not started | [Several people paid](#16-several-people-paid) | Many payers on one expense, not one. | Reaches `paidBy` in the model *and* `payer: Participant.ID` in the calculator. The workaround — one expense per payer — is exactly correct, so this buys tidiness, not capability. | Model change **and** the calculator contract; sits behind **12** |
 | 23 | Not started | [Settle part of a debt](#23-settle-part-of-a-debt) | Enter an amount when marking a transfer paid, instead of clearing all of it. | `GroupStore.recordPayment` already takes an arbitrary `Money`; the limitation is one line in `TransferRow`. It records a payment, never a plan — the transfer list is recomputed from balances and can re-pair. | None. No model change, no CloudKit promote |
+| 25 | Not started | [Choose the date on an expense](#25-choose-the-date-on-an-expense) | Pick when an expense happened instead of always stamping today, so a trip already under way can be entered. | `Expense.date` has existed since v1 and the log already sorts and buckets on it — this is a `date:` parameter with a default and a `DatePicker`. The picker must never write `nil`, and `update` has to start moving the date its comment currently protects. | None. No model change, no CloudKit promote — but build it with **23**, which owns the same control for settle-ups |
 | 19 | Not started | [Prefill the title from where you are](#19-prefill-the-title-from-where-you-are) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalSearch`; MapKit is system. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
 | 20 | Not started | [Prefill the currency from the country you are in](#20-prefill-the-currency-from-the-country-you-are-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, the mapping is already in Foundation. The trap is carrying the previous country's *rate* across. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
 | 21 | Not started | [Location on an expense](#21-location-on-an-expense) | Latitude, longitude and the chosen name, stored on the expense. | Group the log by place — a charts screen is in **Not planned** for a reason that applies here unchanged. | Model change (pair with **12**/**16**); a shared location doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
@@ -598,6 +599,13 @@ people have data in it abandons whatever hadn't synced.
 An optional String on `Expense` holding an SF Symbol name, same trick as the avatars above.
 Groups the expense list and costs nothing in the bundle.
 
+**Asked for by mail on 2026-08-31**, which is the first time this entry has had
+a request behind it rather than an author's hunch. It arrived paired with
+**25**, and the pairing is a fair one: neither is about getting a number into
+the app faster, and both are about the log being readable weeks later. They do
+not have to ship together — **25** needs no model change and this needs a
+version 7 — but they answer the same complaint.
+
 ### 11. Archive a group
 
 Trips end; the list never shrinks. One optional Date and a filtered
@@ -731,6 +739,69 @@ is the entire point of the sheet.
 *Cost: no model change and no CloudKit promote. A sheet, a decimal field and a
 handful of strings in both languages — a few KB of `__text`, unmeasured until it
 is built.*
+
+### 25. Choose the date on an expense
+
+Asked for by mail on 2026-08-31, alongside categories, and phrased as
+*grandfathering*: the form stamps today and offers no way to say otherwise, so
+anything that happened before the app was opened cannot be recorded as having
+happened then.
+
+The case is adoption rather than correction. Somebody installs Dutch on the
+third day of a trip and wants days one and two in it. Today those two days go in
+dated today — six receipts under one heading, in the wrong order, on the screen
+whose entire organising idea is *Sat 12 July*. The alternative is not entering
+them at all, which is the same as not adopting the app until the next trip.
+
+**`Expense.date` has been there since v1.** It is an optional `Date` in the
+shipped model, `Expense.request(in:)` already sorts on it descending, and
+`GroupDetailView` buckets that sorted log into days in a single pass. So a
+backdated expense sorts and groups correctly with nothing changed: this is a
+`date:` parameter on `GroupStore.addExpense` — defaulted to `Date()`, so the
+intents and `ScreenshotSeed` are untouched — and a `DatePicker` in the form. No
+model version and no CloudKit promote, which makes it the second entry here
+cheap for the same reason as **23**: the storage was built general and only the
+form is narrow.
+
+**The picker must never write `nil`.** The day grouping gives a dateless record
+its own `.distantPast` bucket at the bottom of the log, on the stated grounds
+that "a row missing from the log would be money missing from the screen". That
+bucket exists for a record caught mid-sync, not for a user's choice, and a
+clearable date field would start producing them deliberately.
+
+**`update` has to start moving the date, and its comment currently says the
+opposite** — *"`date` is deliberately untouched: an edit corrects what was
+recorded, it does not move the expense to today."* That was written when nothing
+could state a date, so the only thing an edit could do to one was reset it
+silently, which is what the comment protects against. Once the form carries the
+field the same reasoning inverts: a wrong date is exactly what somebody reopens
+an expense to fix. The invariant worth keeping is that an edit never moves the
+date *implicitly* — the field is seeded from the stored value, and only an
+explicit change writes a new one.
+
+**It goes below the amount.** The cursor starting in the amount was a
+first-feedback-batch decision and it is the right one, the amount being the only
+field the form cannot be saved without; a date row above it takes that back.
+`.datePickerStyle(.compact)` occupies one Form row, pushes nothing off screen,
+and should show the real date rather than a *Today* placeholder so the
+capability is visible without being in the way.
+
+**Whether the future is allowed is the one open question.** An expense is
+something that happened, which argues for a bound at today. Two things argue
+against a hard one: a prepaid booking is a real thing to log, and *today* is
+genuinely ambiguous for a group spread across timezones, which is the group this
+app is for. Against both sits the tip cap's reasoning — a bound catches the typo
+rather than the tipper, and a year fat-fingered into next year is the classic
+one, invisible afterwards because it sorts to the top of the log and stays
+there. Unresolved.
+
+**Build it with 23.** `GroupStore.recordPayment` stamps `Date()` the same way,
+and *"I paid her back last Tuesday"* is the same sentence. Settling up has no
+form to put a date in — but **23** proposes one, and that sheet is where this
+belongs. Two features, one control, built once.
+
+*Cost: no model change and no CloudKit promote. A `DatePicker`, one parameter
+with a default, and one string in both languages.*
 
 ---
 
