@@ -114,25 +114,66 @@ struct EmblemGrid: View {
     /// A tap target of 44 with a smaller mark inside it, rather than a 30pt
     /// button that happens to be easy to miss.
     private let target: CGFloat = 44
+    private let spacing: CGFloat = 4
+
+    /// Three rows and half of a fourth.
+    ///
+    /// The half is the point: cutting the grid on a row boundary makes a
+    /// capped list look like a complete one, and nobody scrolls a list they
+    /// believe they have already seen all of. A row sliced through the middle
+    /// is the only affordance a scroll view gets for free.
+    ///
+    /// Fixed rather than scaled with Dynamic Type, because the thing it is
+    /// measuring is fixed — `target` is a 44pt tap target at every text size,
+    /// so a cap that grew would show the same three and a half rows in more
+    /// space.
+    private var maxHeight: CGFloat {
+        (target + spacing) * 3 + target / 2
+    }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: target), spacing: 4)], spacing: 4) {
-            if includesNone {
-                // First, and drawn as a person rather than as a slash or an
-                // empty circle: this is not "clear the field", it is the other
-                // way a member can look, and `PersonIcon` draws exactly this
-                // glyph for somebody whose name yields no initials.
-                button(for: nil, systemName: "textformat.abc", label: .emblemInitials)
-            }
+        // Capped, because the set is forty-eight symbols and an uncapped grid
+        // is six rows of glyphs standing between the colour swatches and
+        // everything below them — on the member sheet, that is the name field
+        // scrolled off the top by a decoration.
+        //
+        // A scroll view nested in the `Form` that presents this. The two do not
+        // fight: the inner one takes the gesture while it has somewhere to go
+        // and hands it back at its ends, which is the behaviour every iOS list
+        // with an inline picker already has.
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: target), spacing: spacing)],
+                    spacing: spacing
+                ) {
+                    if includesNone {
+                        // First, and drawn as letters rather than as a slash or
+                        // an empty circle: this is not "clear the field", it is
+                        // the other way a member can look.
+                        button(for: nil, systemName: "textformat.abc", label: .emblemInitials)
+                    }
 
-            ForEach(Emblem.allCases) { symbol in
-                button(for: symbol, systemName: symbol.systemName, label: symbol.label)
+                    ForEach(Emblem.allCases) { symbol in
+                        button(for: symbol, systemName: symbol.systemName, label: symbol.label)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: maxHeight)
+            // Reopening the sheet on a symbol chosen weeks ago used to show the
+            // top of the grid with nothing selected in it, which reads as "no
+            // symbol" — the one state the sheet is supposed to distinguish. Not
+            // animated, because this is where the grid *starts*, not somewhere
+            // it moved to.
+            .onAppear {
+                guard selection != nil else { return }
+                proxy.scrollTo(selection, anchor: .center)
             }
         }
         .animation(.snappy, value: selection)
         .animation(.snappy, value: tint)
         .sensoryFeedback(.selection, trigger: selection)
-        .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Symbol")
     }
@@ -150,6 +191,9 @@ struct EmblemGrid: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        // Keyed by the optional itself, so `scrollTo` above can address the
+        // current selection without a second identifier to keep in step.
+        .id(symbol)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selection == symbol ? [.isSelected] : [])
     }
