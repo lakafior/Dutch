@@ -11,7 +11,7 @@ import SwiftUI
 /// with an appearance nobody recognises still splits money correctly. That is
 /// what lets the stored values be plain strings that an older client can ignore.
 struct GroupAppearance: Equatable {
-    var symbol: GroupSymbol
+    var symbol: Emblem
     var color: PaletteColor
 }
 
@@ -64,7 +64,14 @@ enum PaletteColor: String, CaseIterable, Identifiable {
 
 // MARK: - Symbol
 
-/// The symbols a group can carry.
+/// The symbols a group or a member can carry.
+///
+/// One set, shared, for the reason `PaletteColorGrid` is one grid: two curated
+/// lists would drift into different glyphs, different translations and
+/// different iOS floors while both claiming to be "the symbols you can pick".
+/// It is named for neither owner because it belongs to both — a `Person` whose
+/// emblem was typed `GroupSymbol` would read as a bug every time anybody
+/// opened the file.
 ///
 /// A fixed set rather than the whole SF Symbols catalogue. Six thousand symbols
 /// need a search field, a results grid and an empty state — a lot of screen for
@@ -74,7 +81,7 @@ enum PaletteColor: String, CaseIterable, Identifiable {
 ///
 /// Ordered by theme, because that is how someone scanning for "the ski trip one"
 /// looks for it.
-enum GroupSymbol: String, CaseIterable, Identifiable {
+enum Emblem: String, CaseIterable, Identifiable {
     // Getting there
     case airplane
     case car = "car.fill"
@@ -179,7 +186,7 @@ extension GroupAppearance {
         }
 
         return GroupAppearance(
-            symbol: GroupSymbol.allCases[Int(symbolSeed % UInt64(GroupSymbol.allCases.count))],
+            symbol: Emblem.allCases[Int(symbolSeed % UInt64(Emblem.allCases.count))],
             color: PaletteColor.allCases[Int(colorSeed % UInt64(PaletteColor.allCases.count))]
         )
     }
@@ -189,10 +196,27 @@ extension GroupAppearance {
     /// arrive as twins.
     static var random: GroupAppearance {
         GroupAppearance(
-            symbol: GroupSymbol.allCases.randomElement() ?? .forkKnife,
+            symbol: Emblem.allCases.randomElement() ?? .forkKnife,
             color: PaletteColor.allCases.randomElement() ?? .blue
         )
     }
+}
+
+// MARK: - Archive
+
+extension ExpenseGroup {
+    /// Whether this group has been put away.
+    ///
+    /// A `Date` in the model rather than a `Bool`, for nothing this build uses:
+    /// *when* a trip ended is the sort key an archive screen would eventually
+    /// want, and a boolean cannot be widened into one later without a second
+    /// model version and a second CloudKit promote. The attribute is free
+    /// either way — this is the cheap half of a decision whose expensive half
+    /// is irreversible.
+    ///
+    /// Nothing about the money changes. An archived group still settles, still
+    /// syncs, and still counts against `GroupLimit` — see the note there.
+    var isArchived: Bool { archivedDate != nil }
 }
 
 // MARK: - Group
@@ -207,7 +231,7 @@ extension ExpenseGroup {
     var appearance: GroupAppearance {
         let derived = GroupAppearance.derived(from: id)
         return GroupAppearance(
-            symbol: symbolName.flatMap(GroupSymbol.init(rawValue:)) ?? derived.symbol,
+            symbol: symbolName.flatMap(Emblem.init(rawValue:)) ?? derived.symbol,
             color: colorName.flatMap(PaletteColor.init(rawValue:)) ?? derived.color
         )
     }

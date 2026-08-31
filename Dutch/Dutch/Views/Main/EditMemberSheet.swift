@@ -4,7 +4,7 @@
 
 import SwiftUI
 
-/// Sheet for renaming one member and choosing the colour of their circle.
+/// Sheet for renaming one member and choosing how their circle looks.
 ///
 /// Reached by touch-and-hold rather than by a control on the members list, for
 /// the same reason "This Is Me" is: neither is done more than once on a trip,
@@ -25,6 +25,9 @@ struct EditMemberSheet: View {
 
     @State private var name: String
     @State private var color: PaletteColor
+    /// `nil` means initials, which is the default and stays reachable from the
+    /// grid — a member is not required to carry a glyph the way a group is.
+    @State private var symbol: Emblem?
 
     /// Whether the current colour was picked rather than assigned, which is the
     /// only thing on this sheet there is to undo.
@@ -32,15 +35,20 @@ struct EditMemberSheet: View {
 
     /// Called with the trimmed name and the chosen colour, or a `nil` colour to
     /// hand the member back to the roster's automatic assignment.
-    private let onSave: (String, PaletteColor?) -> Void
+    private let onSave: (String, PaletteColor?, Emblem?) -> Void
 
-    init(member: Person, avatar: PersonAvatar, onSave: @escaping (String, PaletteColor?) -> Void) {
+    init(
+        member: Person,
+        avatar: PersonAvatar,
+        onSave: @escaping (String, PaletteColor?, Emblem?) -> Void
+    ) {
         _name = State(initialValue: member.name ?? "")
         // Seeded with what the row is already showing — which for a member
         // nobody has styled is the colour the roster gave them, not a blank.
         // Opening on the circle you just touched is the whole reason the
         // automatic assignment is stable.
         _color = State(initialValue: avatar.color)
+        _symbol = State(initialValue: avatar.symbol)
         wasChosen = member.chosenColor != nil
         self.onSave = onSave
     }
@@ -54,7 +62,11 @@ struct EditMemberSheet: View {
     /// Kowalska" turns the circle from "A" into "AK" as you go, which is the
     /// only place the app ever explains where those letters come from.
     private var avatar: PersonAvatar {
-        PersonAvatar(initials: PersonAvatar.initials(from: trimmedName), color: color)
+        PersonAvatar(
+            initials: PersonAvatar.initials(from: trimmedName),
+            color: color,
+            symbol: symbol
+        )
     }
 
     var body: some View {
@@ -66,7 +78,7 @@ struct EditMemberSheet: View {
                     // would be two ways of saying the same thing in one sheet.
                     HStack(spacing: 16) {
                         PersonIcon(avatar, size: 52)
-                            .animation(.snappy, value: color)
+                            .animation(.snappy, value: avatar)
 
                         TextField(String(localized: .memberName), text: $name)
                             .textContentType(.givenName)
@@ -79,6 +91,7 @@ struct EditMemberSheet: View {
 
                 Section {
                     PaletteColorGrid(selection: $color)
+                    EmblemGrid(selection: $symbol, tint: color)
                 } footer: {
                     Text(.personalizationFooterInfo)
                 }
@@ -91,7 +104,10 @@ struct EditMemberSheet: View {
                         // *and* reset the colour doesn't silently lose the
                         // rename to whichever row they tapped last.
                         Button("Use Automatic Colour", role: .destructive) {
-                            save(color: nil)
+                            // The colour only. A symbol has no automatic
+                            // assignment to fall back to — the way back from one
+                            // is Initials, which is a tap in the grid above.
+                            save(color: nil, symbol: symbol)
                         }
                         .disabled(trimmedName.isEmpty)
                     }
@@ -113,13 +129,13 @@ struct EditMemberSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    private func save(color: PaletteColor?) {
+    private func save(color: PaletteColor?, symbol: Emblem?) {
         guard !trimmedName.isEmpty else { return }
-        onSave(trimmedName, color)
+        onSave(trimmedName, color, symbol)
         dismiss()
     }
 
-    private func save() { save(color: color) }
+    private func save() { save(color: color, symbol: symbol) }
 }
 
 #Preview {
@@ -128,8 +144,8 @@ struct EditMemberSheet: View {
             EditMemberSheet(
                 member: PersistenceController.previewMember,
                 avatar: PersonAvatar(initials: "AK", color: .teal)
-            ) { name, color in
-                print("save \(name) as \(String(describing: color))")
+            ) { name, color, symbol in
+                print("save \(name) as \(String(describing: color)) \(String(describing: symbol))")
             }
         }
 }

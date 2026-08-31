@@ -59,6 +59,12 @@ struct GroupListView: View {
     /// the user opened the paywall themselves.
     @State private var paywallReason: PaywallReason?
 
+    /// Whether the archive is open. Collapsed on every launch on purpose: the
+    /// whole feature is that a finished trip stops taking up the list, and a
+    /// disclosure that remembered being open would undo that for the one user
+    /// who ever opened it.
+    @State private var showingArchive = false
+
     private enum PaywallReason: Identifiable {
         case blocked
         case browsing
@@ -86,17 +92,84 @@ struct GroupListView: View {
 
     private var store: GroupStore { GroupStore(context: context) }
 
+    /// The list is fetched unfiltered and split here rather than filtered in
+    /// the fetch, because `GroupLimit` counts `groups` and archiving must not
+    /// change that count — see the note on `GroupLimit.createdCount`.
+    private var active: [ExpenseGroup] { groups.filter { !$0.isArchived } }
+    private var archived: [ExpenseGroup] { groups.filter(\.isArchived) }
+
+    /// The finished trips, folded away.
+    ///
+    /// A disclosure rather than a second screen: the navigation path is typed
+    /// `[ExpenseGroup]`, so a separate archive destination would mean widening
+    /// it to an enum and rewriting every push for a list most people will open
+    /// once. Collapsed, this is a single row — which is the entire point, since
+    /// the complaint was that the list never shrinks.
+    ///
+    /// Absent entirely until something is in it. A permanently visible
+    /// *Archived (0)* is a row that explains a feature nobody has used yet.
+    @ViewBuilder
+    private var archiveSection: some View {
+        if !archived.isEmpty {
+            Section {
+                DisclosureGroup(isExpanded: $showingArchive) {
+                    ForEach(archived) { group in
+                        NavigationLink(value: group) {
+                            GroupRow(group: group)
+                        }
+                        .swipeActions(edge: .leading) {
+                            archiveButton(for: group)
+                        }
+                    }
+                    .onDelete { delete(at: $0, from: archived) }
+                } label: {
+                    Label {
+                        Text(archivedCount(archived.count))
+                    } icon: {
+                        Image(systemName: "archivebox")
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// One button for both directions, so the two can't drift apart in wording
+    /// or in which edge they live on.
+    ///
+    /// The leading edge, opposite Delete. Archiving is the *un*-destructive
+    /// half of "I am finished with this trip", and putting it under the same
+    /// thumb sweep as the action that destroys every expense in it is how a
+    /// swipe becomes something people stop doing.
+    private func archiveButton(for group: ExpenseGroup) -> some View {
+        Button {
+            setArchived(!group.isArchived, for: group)
+        } label: {
+            if group.isArchived {
+                Label("Unarchive", systemImage: "tray.and.arrow.up")
+            } else {
+                Label("Archive", systemImage: "archivebox")
+            }
+        }
+        .tint(group.isArchived ? .blue : .indigo)
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             List {
                 Section {
-                    ForEach(groups) { group in
+                    ForEach(active) { group in
                         NavigationLink(value: group) {
                             GroupRow(group: group)
                         }
+                        .swipeActions(edge: .leading) {
+                            archiveButton(for: group)
+                        }
                     }
-                    .onDelete(perform: delete)
+                    .onDelete { delete(at: $0, from: active) }
                 }
+
+                archiveSection
 
                 // The always-available way in. Without it the only route to
                 // "Restore Purchases" would be to first get blocked by the
@@ -301,11 +374,30 @@ struct GroupListView: View {
         path = [group]
     }
 
-    private func delete(at offsets: IndexSet) {
+    /// Offsets index the *section's* array, not the fetch. Two sections draw
+    /// from one `FetchedResults` now, so deleting the second archived row by
+    /// index into `groups` would delete whichever group happened to sit second
+    /// in the whole list.
+    private func delete(at offsets: IndexSet, from list: [ExpenseGroup]) {
         do {
             for index in offsets {
-                try store.delete(groups[index])
+                try store.delete(list[index])
             }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Counted in the catalog, not in Swift. Polish needs four plural
+    /// categories where English needs two, so any `== 1 ? singular : plural`
+    /// here would be a bug for it.
+    private func archivedCount(_ value: Int) -> String {
+        String(localized: "\(value) archived")
+    }
+
+    private func setArchived(_ archived: Bool, for group: ExpenseGroup) {
+        do {
+            try store.setArchived(archived, for: group)
         } catch {
             errorMessage = error.localizedDescription
         }

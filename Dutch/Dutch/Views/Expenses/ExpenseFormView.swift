@@ -81,6 +81,12 @@ struct ExpenseFormView: View {
     /// and on a duplicate: the tip is folded into the stored amount, so the
     /// figure in the field above is already the tipped one, and re-offering a
     /// percentage would apply it a second time.
+    /// What it was for, or `nil` for the expense nobody filed. Optional in the
+    /// state as well as in the model: a category is a thing to leave blank, and
+    /// defaulting it to *Other* would fill the log with a word meaning "the
+    /// user didn't say" while looking like they had.
+    @State private var category: ExpenseCategory?
+
     /// When the expense happened. Never optional here: the picker cannot
     /// produce "no date", and the log's dateless bucket is for records caught
     /// mid-sync, not for something a user chose.
@@ -127,6 +133,7 @@ struct ExpenseFormView: View {
         let now = Date()
         _date = State(initialValue: now)
         self.seedDate = now
+        _category = State(initialValue: nil)
 
         // Mid-trip, the next expense is almost always in the same currency as
         // the last one, at the same rate. Entering ten Polish receipts should
@@ -192,6 +199,13 @@ struct ExpenseFormView: View {
         let seeded = editing == nil ? Date() : (expense.date ?? Date())
         _date = State(initialValue: seeded)
         self.seedDate = seeded
+
+        // Carried by a duplicate as well as an edit, unlike the date. Four
+        // people taking turns at the bar are filing four *Drinks*, and the
+        // category is exactly the kind of retyping Duplicate exists to save —
+        // where the date is the one field whose carried-over value would be
+        // silently wrong.
+        _category = State(initialValue: expense.category)
 
         // An expense with no stored weighting is an even split, and a uniform
         // weighting is stored as none at all — so the toggle starts on exactly
@@ -412,6 +426,7 @@ struct ExpenseFormView: View {
     /// away; hiding the third takes back the reason the row was added.
     private var detailsSection: some View {
         Section {
+            categoryRow
             tipRow
             currencyRow
             rateRow
@@ -431,6 +446,42 @@ struct ExpenseFormView: View {
                 Text(summary)
                     .motionContentTransition(.numericText())
             }
+        }
+    }
+
+    /// What it was for.
+    ///
+    /// A `Menu`-backed `Picker` rather than the symbol grid `AppearancePicker`
+    /// uses. A group's symbol is decoration chosen by eye, so a grid of glyphs
+    /// is the right control for it; a category has a *name*, and twelve glyphs
+    /// with no words under them would ask the user to guess whether the bolt
+    /// means electricity or fast — which is exactly the ambiguity a category is
+    /// supposed to remove.
+    ///
+    /// `None` is first and is a real choice, not a placeholder: an expense
+    /// nobody filed has to be reachable back from one that was, or clearing a
+    /// category means deleting the expense and entering it again.
+    private var categoryRow: some View {
+        qualifier {
+            Picker(selection: $category) {
+                Text(.categoryNone).tag(ExpenseCategory?.none)
+
+                ForEach(ExpenseCategory.allCases) { option in
+                    // Glyph *and* word in the menu, so the row's bare glyph is
+                    // learnable — this is the only screen that says which is
+                    // which.
+                    Label {
+                        Text(option.label)
+                    } icon: {
+                        Image(systemName: option.systemName)
+                    }
+                    .tag(ExpenseCategory?.some(option))
+                }
+            } label: {
+                Text(.category)
+                    .foregroundStyle(.secondary)
+            }
+            .pickerStyle(.menu)
         }
     }
 
@@ -1019,6 +1070,7 @@ struct ExpenseFormView: View {
                     amount: amount,
                     paidBy: payer,
                     splitAmong: selectedParticipants,
+                    category: category,
                     // Only when it actually moved. An untouched picker passes
                     // `nil`, which leaves the stored value exactly as it was —
                     // including leaving a dateless record dateless, rather than
@@ -1034,6 +1086,7 @@ struct ExpenseFormView: View {
                     paidBy: payer,
                     splitAmong: selectedParticipants,
                     in: group,
+                    category: category,
                     on: date,
                     paidIn: foreign,
                     shares: weights

@@ -79,9 +79,30 @@ struct GroupStore {
     /// Renaming is the whole reason this exists. Until it did, a name typed
     /// wrong at a dinner table was permanent, and it was permanent on everyone
     /// else's phone too.
-    func update(_ member: Person, name: String, color: PaletteColor?) throws {
+    func update(
+        _ member: Person,
+        name: String,
+        color: PaletteColor?,
+        symbol: Emblem? = nil
+    ) throws {
         member.name = name
         member.chosenColor = color
+        member.chosenSymbol = symbol
+        try context.save()
+    }
+
+    /// Puts a group away, or brings it back.
+    ///
+    /// Stores *when* rather than *that*, so an archive screen can eventually
+    /// sort by it — see `ExpenseGroup.isArchived`.
+    ///
+    /// This syncs, like everything else on the group. Archiving is a statement
+    /// about the trip rather than a preference of whoever is looking: the
+    /// dinner is over for all six people, and a flag that moved on one phone
+    /// only would leave the same group in two states with nothing to say which
+    /// is right. Anyone can undo it, which is the same contract renaming has.
+    func setArchived(_ archived: Bool, for group: ExpenseGroup) throws {
+        group.archivedDate = archived ? Date() : nil
         try context.save()
     }
 
@@ -162,6 +183,7 @@ struct GroupStore {
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
+        category: ExpenseCategory? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil
@@ -176,6 +198,7 @@ struct GroupStore {
             amount: amount,
             paidBy: payer,
             splitAmong: participants,
+            category: category,
             foreign: foreign,
             shares: shares,
             to: expense
@@ -213,6 +236,7 @@ struct GroupStore {
         amount: Money,
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
+        category: ExpenseCategory? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil
@@ -224,6 +248,7 @@ struct GroupStore {
             amount: amount,
             paidBy: payer,
             splitAmong: participants,
+            category: category,
             foreign: foreign,
             shares: shares,
             to: expense
@@ -278,10 +303,17 @@ struct GroupStore {
         amount: Money,
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
+        category: ExpenseCategory?,
         foreign: ForeignAmount?,
         shares: [UUID: Int]?,
         to expense: Expense
     ) {
+        // Written on both paths, `nil` included, so clearing a category on an
+        // edit actually clears it. The same reasoning as the foreign fields
+        // below: an attribute only ever overwritten with a non-nil value is one
+        // the user cannot take back.
+        expense.category = category
+
         // Stored as `nil` when blank rather than as `""`, because a title is
         // optional at the form and every screen already falls back on a
         // *missing* one. An empty string is not missing: it satisfies

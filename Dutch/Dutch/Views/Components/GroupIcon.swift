@@ -53,7 +53,7 @@ struct GroupIcon: View {
         }
 
         LazyVGrid(columns: Array(repeating: GridItem(), count: 6), spacing: 12) {
-            ForEach(GroupSymbol.allCases) { symbol in
+            ForEach(Emblem.allCases) { symbol in
                 GroupIcon(GroupAppearance(symbol: symbol, color: .indigo))
             }
         }

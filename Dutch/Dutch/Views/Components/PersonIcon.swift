@@ -35,7 +35,14 @@ struct PersonIcon: View {
             .fill(avatar.color.tint.gradient)
             .frame(width: side, height: side)
             .overlay {
-                if let initials = avatar.initials {
+                if let symbol = avatar.symbol {
+                    // Ahead of the initials, not beside them: a circle 30pt
+                    // across fits one thing, and a member who picked a glyph
+                    // picked it *instead of* the letters.
+                    Image(systemName: symbol.systemName)
+                        .font(.system(size: side * 0.44))
+                        .foregroundStyle(.white)
+                } else if let initials = avatar.initials {
                     Text(initials)
                         .font(.system(size: side * 0.4, weight: .semibold))
                         .foregroundStyle(.white)

@@ -38,6 +38,15 @@ enum GroupLimit {
             == PersistenceController.sharedStoreFilename
     }
 
+    /// Archived groups still count, deliberately.
+    ///
+    /// The rule is on groups *created*, and archiving is a change to a list
+    /// rather than to what was created. Discounting them would also make the
+    /// limit trivially bypassable — archive, create, unarchive — which is the
+    /// kind of hole that is found within a week of shipping. So the caller must
+    /// pass every group it has, not the filtered list it is drawing:
+    /// `GroupListView` fetches unfiltered for exactly this reason and splits
+    /// for display only.
     static func createdCount(among groups: some Sequence<ExpenseGroup>) -> Int {
         groups.lazy.filter { !isJoined($0) }.count
     }

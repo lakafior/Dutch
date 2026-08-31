@@ -58,8 +58,8 @@ that matters — this table says *what*, and the sections say *why*, which is th
 half that stops a decision being quietly reversed a year later. Follow the link
 before acting on a row.
 
-Shipped entries carry no number: the gaps in the numbering (1–6, 9, 13, 15, 17,
-18, 23, 25) are items that shipped, and which number belonged to which was never
+Shipped entries carry no number: the gaps in the numbering (1–7, 9, 10, 11, 13, 15,
+17, 18, 23, 25) are items that shipped, and which number belonged to which was never
 recorded.
 
 | № | Status | Name | Description | How it's done, or would be | Blockers |
@@ -81,11 +81,11 @@ recorded.
 | — | Shipped | [Tip, tax and service charge](#tip-tax-and-service-charge) | One percentage added on top of the entered amount, applied before the split. | Multiplies the figure as typed, before any conversion, so the bill is rounded exactly once and a split still adds back up. Capped at 100% for the typo, not the tipper. | Nothing is stored, so a tip can't be edited afterwards |
 | — | Shipped | [Settle part of a debt](#settle-part-of-a-debt) | Tap the amount on a suggested payment and enter what actually changed hands; **Mark Paid** still clears the whole thing in one tap. | The store always took an arbitrary `Money` — only `TransferRow` insisted on the full figure. It records a payment, never a plan: the transfer list is recomputed from balances and may re-pair under a partial. | Capped at the suggested amount, so overpaying means overpaying in cash |
 | — | Shipped | [Choose the date on an expense](#choose-the-date-on-an-expense) | A date picker on the expense form and on the settle-up sheet, so a trip already under way can be entered. | `Expense.date` had existed since v1 and the log already sorted and bucketed on it, so this was a `date:` parameter with a default and one Form row. Bounded at today. | An edit only moves the date when the picker was actually touched |
-| 7 | Not started | [Member avatars from SF Symbols](#7-member-avatars-from-sf-symbols) | A glyph per member, from a curated set of system symbols. | Symbols ship with the OS, so a full set costs one optional String and nothing in the bundle. | Model change; list must be pinned to symbols that exist at iOS 17 |
+| — | Shipped | [Categories](#categories) | An optional category on an expense, drawn as a glyph in the log. | An optional `symbolName` on `Expense`, same trick as the group's — SF Symbols ship with the OS, so a full set costs nothing in the bundle. Nothing in the settlement reads it. | Doesn't group or filter the log yet; it labels rows |
+| — | Shipped | [Member avatars from SF Symbols](#member-avatars-from-sf-symbols) | A member can wear a glyph instead of their initials. | An optional `symbolName` on `Person`, and the group's curated set renamed `Emblem` and shared rather than copied. | — |
+| — | Shipped | [Archive a group](#archive-a-group) | Finished trips fold into one collapsed row instead of sitting in the list forever. | An optional `archivedDate` on `ExpenseGroup` and a split of the same unfiltered fetch. | Archived groups still count against the free limit, deliberately |
 | 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
-| 10 | Not started | [Categories](#10-categories) | An optional SF Symbol name on `Expense`, grouping the log. | Same trick as the avatars; nothing in the bundle. | Model change |
-| 11 | Not started | [Archive a group](#11-archive-a-group) | Trips end and the list never shrinks; this shrinks it. | One optional Date and a filtered `@FetchRequest`. | Model change |
-| 12 | Not started | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | The hardest control in the app — it needs a running remainder on screen and a decided answer for when the fixed amounts overshoot. Asked for directly, twice. | Model change; do it in one version 7 with **16** and **21** |
+| 12 | Not started | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | The hardest control in the app — it needs a running remainder on screen and a decided answer for when the fixed amounts overshoot. Asked for directly, twice. | Model change; do it in one version 8 with **16** and **21** |
 | 16 | Not started | [Several people paid](#16-several-people-paid) | Many payers on one expense, not one. | Reaches `paidBy` in the model *and* `payer: Participant.ID` in the calculator. The workaround — one expense per payer — is exactly correct, so this buys tidiness, not capability. | Model change **and** the calculator contract; sits behind **12** |
 | 19 | Not started | [Prefill the title from where you are](#19-prefill-the-title-from-where-you-are) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalSearch`; MapKit is system. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
 | 20 | Not started | [Prefill the currency from the country you are in](#20-prefill-the-currency-from-the-country-you-are-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, the mapping is already in Foundation. The trap is carrying the previous country's *rate* across. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
@@ -553,7 +553,7 @@ and no CloudKit promote — but unlike the exchange rate, which keeps
 `originalAmount` as provenance, this keeps none. Reopening an expense shows the
 tipped figure with the tip back at *None*: lossless if you re-save, but the tip
 cannot be adjusted afterwards and no row can read *"incl. 15%"*. An optional
-`tipPercent` is the obvious passenger for the version 7 that **12** and **16**
+`tipPercent` is the obvious passenger for the version 8 that **12** and **16**
 will need anyway.
 
 *Two things this turned up, both bigger than the feature.* The `saves as` footer
@@ -769,21 +769,115 @@ tap, and anybody settling on a different day is already opening the sheet.
 *Cost: unmeasured. Two `DatePicker`s, three defaulted parameters, and one string
 in both languages. No model change and no CloudKit promote.*
 
+### Categories
+
+**Asked for by mail on 2026-08-31**, the first time this entry had a request
+behind it rather than an author's hunch, and paired in the same message with
+**Choose the date on an expense**. Neither is about getting a number into the
+app faster; both are about the log being readable weeks later. The date half
+needed no model change and shipped first for that reason.
+
+An optional `symbolName` on `Expense`, the same trick the group's own icon
+uses, so a full set of twelve costs one optional String and nothing in the
+bundle. Nothing in `SettlementBridge` reads it — an expense filed under
+*Groceries* splits exactly as an unfiled one does, which is what lets an older
+client that has never heard of categories keep computing identical balances.
+
+**Twelve fixed cases, not free text.** Freeform names need a search field and an
+empty state, and two people in the same group would file the same dinner under
+"Food" and "food" and never see each other's.
+
+**A menu, not the symbol grid.** A group's symbol is decoration chosen by eye,
+so `AppearancePicker` shows glyphs alone; a category has a *name*, and twelve
+glyphs with no words under them would ask whether the bolt means electricity or
+speed — the exact ambiguity a category exists to remove. The row draws the glyph
+only, because the log is scanned rather than read and the menu is where the
+glyph is learned. Nothing at all is drawn for an unfiled expense: a placeholder
+tag would make "no category" look like a category, which most expenses will be.
+
+**`None` is a real choice.** `apply` writes the category on both paths, `nil`
+included, so clearing one actually clears it — an attribute only ever
+overwritten with a non-nil value is one the user cannot take back. A duplicate
+carries the category over, unlike the date: four people taking turns at the bar
+are filing four *Drinks*, and that is exactly the retyping Duplicate exists to
+save.
+
+*Cost: unmeasured. One attribute, twelve cases, fourteen strings in both
+languages.*
+
+### Member avatars from SF Symbols
+
+An optional `symbolName` on `Person`, drawn *instead of* their initials. The
+symbols ship with the OS, so this costs one optional String and nothing in the
+bundle — where photo avatars would have meant a picker, a downscaler, a
+`CKAsset` per member through a shared zone, and a reason to ask for the photo
+library.
+
+**Nobody gets one by default, and that is the feature working.** `PersonAvatar`
+still derives initials from the name that is already there and a colour from the
+id that is already there; the glyph is an override on top. A roster of identical
+`person.fill` circles would be worse than what it replaced.
+
+**The group's set is now shared rather than copied.** `GroupSymbol` became
+`Emblem`, for the reason `PaletteColorGrid` is one grid: two curated lists drift
+into different glyphs, different translations and different iOS floors while
+both claiming to be "the symbols you can pick". It is named for neither owner
+because it belongs to both — a `Person` whose emblem was typed `GroupSymbol`
+would read as a bug every time anybody opened the file. The raw values did not
+change, so nothing already stored moved. Sharing it also kept the string cost at
+one new key: *Initials*, the way back out.
+
+**A member's grid offers that way back; a group's does not.** A group always has
+a symbol. `EmblemGrid` takes an optional binding and an `includesNone` flag, and
+`AppearancePicker` bridges its non-optional one through it.
+
+*Cost: unmeasured. One attribute, one renamed type, one new string.*
+
+### Archive a group
+
+Trips end and the list never shrank. One optional `archivedDate` on
+`ExpenseGroup`, a leading swipe, and a collapsed disclosure holding whatever has
+been put away.
+
+**A `Date`, not a `Bool`, for something this build does not use.** *When* a trip
+ended is the sort key an archive screen would eventually want, and a boolean
+cannot be widened into one later without a second model version and a second
+CloudKit promote. The attribute costs the same either way; this is the cheap
+half of a decision whose expensive half is irreversible.
+
+**It syncs.** Archiving is a statement about the trip rather than a preference
+of whoever is looking — the dinner is over for all six people — and a flag that
+moved on one phone only would leave the same group in two states with nothing to
+say which is right. Anyone can undo it, which is the contract renaming already
+has.
+
+**Archived groups still count against the free limit.** The rule is on groups
+*created*, and archiving changes a list rather than what was created.
+Discounting them would also make the limit bypassable by archiving, creating and
+unarchiving — the kind of hole found within a week of shipping. So
+`GroupListView` fetches **unfiltered** and splits for display only, and
+`GroupLimit.createdCount` keeps seeing everything.
+`archivedGroupsStillCount` is the guard, and the note is on the function rather
+than here because that is where somebody would otherwise "optimise" the fetch.
+
+**A disclosure, not a second screen.** The navigation path is typed
+`[ExpenseGroup]`, so a separate archive destination would mean widening it to an
+enum and rewriting every push for a list most people open once. Collapsed on
+every launch, and absent entirely until something is in it — a permanent
+*Archived (0)* is a row explaining a feature nobody has used.
+
+**On the leading edge, opposite Delete.** Archiving is the *un*-destructive half
+of "I am finished with this trip", and putting it under the same thumb sweep as
+the action that destroys every expense in the group is how a swipe becomes
+something people stop doing. The two `onDelete` handlers now index their own
+section's array rather than the fetch, which is the bug two sections over one
+`FetchedResults` would otherwise have introduced silently.
+
+*Cost: unmeasured. One attribute, one store method, three strings.*
+
 ---
 
 ## Next
-
-### 7. Member avatars from SF Symbols
-
-A glyph per member, chosen from a curated set of SF Symbols. Because the symbols
-ship with the OS, a full set of avatars costs one optional String on `Person` and
-nothing in the bundle — where photo avatars would mean an image pipeline, CloudKit
-assets and sync weight.
-
-Two things to get right: the curated list must be pinned to symbols available at
-the deployment target (iOS 17), since a name that doesn't resolve renders as
-nothing at all; and the symbol has to stay decorative — the accessibility label
-is the member's name, not the glyph.
 
 ### 8. Home screen widget
 
@@ -794,24 +888,6 @@ The awkward part is already done: both the Core Data stores and `ExpenseDefaults
 live in `group.net.smigi.Dutch`, so the extension can open them. That was the one
 piece of this that would have been expensive to retrofit — moving a store after
 people have data in it abandons whatever hadn't synced.
-
-### 10. Categories
-
-An optional String on `Expense` holding an SF Symbol name, same trick as the avatars above.
-Groups the expense list and costs nothing in the bundle.
-
-**Asked for by mail on 2026-08-31**, which is the first time this entry has had
-a request behind it rather than an author's hunch. It arrived paired with
-**Choose the date on an expense**, and the pairing is a fair one: neither is
-about getting a number into the app faster, and both are about the log being
-readable weeks later. They did not have to ship together — that one needed no
-model change and this needs a version 7 — and the date half shipped first for
-exactly that reason. This is the half of the complaint still outstanding.
-
-### 11. Archive a group
-
-Trips end; the list never shrinks. One optional Date and a filtered
-`@FetchRequest`.
 
 ### 12. Exact amounts in a split
 
@@ -969,7 +1045,8 @@ later.
 **Do it in the same model version as 12 and 16.** Those two are already paired
 above for the reason that a new attribute means running the CloudKit
 initialize-and-promote dance, and that is the step that gets missed. This makes
-three attributes in one version 7, not three versions.
+three attributes in one version 8, not three versions — Dutch 7 having
+already spent its promote on categories, avatars and the archive.
 
 Two decisions come first, and neither is technical:
 
@@ -984,7 +1061,7 @@ Two decisions come first, and neither is technical:
   breakdown by place is a charts screen, and *A charts tab* sits in **Not
   planned** below for a reason that applies here unchanged: nobody opens it
   twice for a group with eleven expenses in it. Grouping the expense list by
-  place — the same trick **10** uses for categories — is the version that
+  place — the same trick **Categories** uses — is the version that
   survives contact with a real group.
 
 On the privacy page: nothing here becomes collected data, because there is still

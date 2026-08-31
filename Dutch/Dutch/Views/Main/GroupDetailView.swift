@@ -181,8 +181,8 @@ struct GroupDetailView: View {
             AddMemberSheet(onAdd: addMember)
         }
         .sheet(item: $editTarget) { target in
-            EditMemberSheet(member: target.member, avatar: target.avatar) { name, color in
-                updateMember(target.member, name: name, color: color)
+            EditMemberSheet(member: target.member, avatar: target.avatar) { name, color, symbol in
+                updateMember(target.member, name: name, color: color, symbol: symbol)
             }
         }
         .sheet(isPresented: $showingShareSheet) {
@@ -717,9 +717,14 @@ struct GroupDetailView: View {
     /// Applies a rename and a colour from the sheet. Loud on failure, unlike
     /// `setIdentity`: this one is a write to a record everybody in the group
     /// sees, so a save that didn't happen is worth saying so.
-    private func updateMember(_ member: Person, name: String, color: PaletteColor?) {
+    private func updateMember(
+        _ member: Person,
+        name: String,
+        color: PaletteColor?,
+        symbol: Emblem?
+    ) {
         do {
-            try store.update(member, name: name, color: color)
+            try store.update(member, name: name, color: color, symbol: symbol)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1171,14 +1176,42 @@ private struct ExpenseRow: View {
         "Paid by \(expense.paidBy?.name ?? "unknown")"
     }
 
+    /// The category glyph, drawn beside whatever leads the row.
+    ///
+    /// A glyph and not the word. The log is scanned rather than read, the row
+    /// already spends its width on a title, a payer and two figures, and the
+    /// form's menu is where the glyph is learned — it lists every category with
+    /// its name beside it. Nothing is drawn at all for an unfiled expense: a
+    /// placeholder tag in that column would make "no category" look like a
+    /// category, and most expenses will never have one.
+    ///
+    /// `.secondary` and never tinted. Every colour in this list already belongs
+    /// to a person or to a balance, and a third colour system competing with
+    /// those is how a row stops being scannable.
+    @ViewBuilder
+    private var categoryMark: some View {
+        if let category = expense.category {
+            Image(systemName: category.systemName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                // Sized so a wide glyph and a narrow one leave the titles
+                // beside them starting in the same place.
+                .frame(width: 16)
+                .accessibilityLabel(Text(category.label))
+        }
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             PersonIcon(avatar ?? PersonAvatar(initials: nil, color: .gray), size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
                 if let title {
-                    Text(title)
-                        .font(.body)
+                    HStack(spacing: 6) {
+                        categoryMark
+                        Text(title)
+                            .font(.body)
+                    }
 
                     // Three lines once — title, date, "Paid by X". The date
                     // moved to the day header above and the circle carries the
@@ -1199,9 +1232,12 @@ private struct ExpenseRow: View {
                     // and the amount together are already a complete sentence.
                     // `PaymentRow` in this same list has established that a
                     // one-line row reads fine among two-line ones.
-                    Text(payer)
-                        .font(.body)
-                        .accessibilityLabel(accessiblePayer)
+                    HStack(spacing: 6) {
+                        categoryMark
+                        Text(payer)
+                            .font(.body)
+                            .accessibilityLabel(accessiblePayer)
+                    }
                 }
             }
 

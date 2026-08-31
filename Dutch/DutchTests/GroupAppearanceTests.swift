@@ -33,7 +33,7 @@ struct GroupAppearanceTests {
         // Byte sums: even offsets pick the symbol, odd ones the colour.
         // 6E + 2C + 4B + 4E + 8A + 0C + 2E + 4A = 577
         // 9F + 1A + 3D + 5F + 7B + 1D + 3F + 5B = 647
-        let expectedSymbol = GroupSymbol.allCases[577 % GroupSymbol.allCases.count]
+        let expectedSymbol = Emblem.allCases[577 % Emblem.allCases.count]
         let expectedColor = PaletteColor.allCases[647 % PaletteColor.allCases.count]
 
         #expect(appearance.symbol == expectedSymbol)
@@ -48,7 +48,7 @@ struct GroupAppearanceTests {
         let looks = (0..<500).map { _ in GroupAppearance.derived(from: UUID()) }
 
         #expect(Set(looks.map(\.color)).count == PaletteColor.allCases.count)
-        #expect(Set(looks.map(\.symbol)).count == GroupSymbol.allCases.count)
+        #expect(Set(looks.map(\.symbol)).count == Emblem.allCases.count)
     }
 
     @Test("A record with no id still has a look")

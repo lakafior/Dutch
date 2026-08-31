@@ -826,4 +826,116 @@ struct GroupStoreTests {
         let total = group.balances.reduce(Money.zero) { $0 + $1.amount }
         #expect(total == .zero)
     }
+
+    // MARK: - Dutch 7
+
+    /// Categories are storage-only: nothing in the settlement reads one, and an
+    /// expense filed under a category still splits exactly as it did.
+    @Test("A category round-trips, and clearing it clears it")
+    func categoryRoundTrips() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 30.00),
+            paidBy: alice, splitAmong: [alice], in: group, category: .dining
+        )
+        let expense = try #require(group.expenseSet.first)
+        #expect(expense.category == .dining)
+        #expect(expense.symbolName == "fork.knife")
+
+        // The edit path has to write `nil` as well as a value, or a category
+        // set by mistake can never be taken off.
+        try store.update(
+            expense, title: "Dinner", amount: Money(amount: 30.00),
+            paidBy: alice, splitAmong: [alice], category: nil
+        )
+        #expect(expense.category == nil)
+        #expect(expense.symbolName == nil)
+    }
+
+    /// A name this build has never heard of — invented by a newer version and
+    /// synced down — must read as "no category", not as a blank glyph.
+    @Test("An unrecognised category reads as none")
+    func unknownCategoryIsNil() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 30.00),
+            paidBy: alice, splitAmong: [alice], in: group
+        )
+        let expense = try #require(group.expenseSet.first)
+        expense.symbolName = "hovercraft.fill"
+
+        #expect(expense.category == nil)
+    }
+
+    @Test("A member's emblem round-trips, and Initials clears it")
+    func memberEmblemRoundTrips() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+
+        try store.update(alice, name: "Alice", color: .teal, symbol: .paw)
+        #expect(alice.chosenSymbol == .paw)
+        #expect(alice.symbolName == "pawprint.fill")
+
+        try store.update(alice, name: "Alice", color: .teal, symbol: nil)
+        #expect(alice.chosenSymbol == nil)
+    }
+
+    /// An emblem is drawn *instead of* initials, so the roster has to hand the
+    /// icon both and let it choose — a symbol that never reached `PersonAvatar`
+    /// would be stored, synced and invisible.
+    @Test("A chosen emblem reaches the avatar the roster builds")
+    @MainActor
+    func rosterCarriesTheEmblem() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.update(alice, name: "Alice", color: .teal, symbol: .paw)
+
+        let avatars = RosterAvatars([alice, bob])
+        #expect(avatars[alice].symbol == .paw)
+        #expect(avatars[alice].initials == "A")
+        #expect(avatars[bob].symbol == nil)
+    }
+
+    @Test("Archiving stores when, and unarchiving clears it")
+    func archiveRoundTrips() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+
+        #expect(!group.isArchived)
+
+        let before = Date()
+        try store.setArchived(true, for: group)
+        #expect(group.isArchived)
+        let stamped = try #require(group.archivedDate)
+        #expect(stamped >= before)
+
+        try store.setArchived(false, for: group)
+        #expect(!group.isArchived)
+        #expect(group.archivedDate == nil)
+    }
+
+    /// Archiving changes a list, not what was created. If it ever reduced the
+    /// count, the free tier would be bypassable by archiving, creating and
+    /// unarchiving — so this is the guard on that hole rather than a test of
+    /// the obvious.
+    @Test("An archived group still counts against the free limit")
+    func archivedGroupsStillCount() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        try store.setArchived(true, for: group)
+
+        #expect(GroupLimit.createdCount(among: [group]) == 1)
+        #expect(!GroupLimit.canCreate(among: [group], unlocked: false))
+        #expect(GroupLimit.canCreate(among: [group], unlocked: true))
+    }
 }

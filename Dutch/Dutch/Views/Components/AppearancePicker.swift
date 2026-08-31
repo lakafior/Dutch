@@ -76,37 +76,86 @@ struct AppearancePicker: View {
             PaletteColorGrid(selection: $appearance.color)
             symbols
         }
-        .sensoryFeedback(.selection, trigger: appearance.symbol)
     }
 
     // MARK: - Symbols
 
+    /// A group always has a symbol, so the grid it gets offers no way back to
+    /// "none" — where a member's does, initials being the thing a member falls
+    /// back to. The binding bridges the two: clearing is unreachable from this
+    /// grid, and a `nil` that arrived some other way leaves the symbol alone.
     private var symbols: some View {
+        EmblemGrid(
+            selection: Binding(
+                get: { appearance.symbol },
+                set: { appearance.symbol = $0 ?? appearance.symbol }
+            ),
+            tint: appearance.color,
+            includesNone: false
+        )
+    }
+}
+
+/// The curated symbols as a grid of marks, tinted with whatever colour the
+/// thing being styled is currently wearing. Renders as a row, so it goes inside
+/// a `Section` in whatever `Form` is presenting it.
+///
+/// Shared by groups and members for the reason `PaletteColorGrid` is shared:
+/// one grid cannot drift into two swatch sizes, two tap targets or two
+/// selection marks while claiming to offer the same two dozen symbols.
+struct EmblemGrid: View {
+    @Binding var selection: Emblem?
+    var tint: PaletteColor
+    /// Whether the grid offers a way back to no symbol at all. A group always
+    /// has one; a member without one is drawn as initials, which is the default
+    /// and has to stay reachable.
+    var includesNone = true
+
+    /// A tap target of 44 with a smaller mark inside it, rather than a 30pt
+    /// button that happens to be easy to miss.
+    private let target: CGFloat = 44
+
+    var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: target), spacing: 4)], spacing: 4) {
-            ForEach(GroupSymbol.allCases) { symbol in
-                Button {
-                    appearance.symbol = symbol
-                } label: {
-                    symbolMark(symbol)
-                        .frame(width: target, height: target)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(symbol.label)
-                .accessibilityAddTraits(appearance.symbol == symbol ? [.isSelected] : [])
+            if includesNone {
+                // First, and drawn as a person rather than as a slash or an
+                // empty circle: this is not "clear the field", it is the other
+                // way a member can look, and `PersonIcon` draws exactly this
+                // glyph for somebody whose name yields no initials.
+                button(for: nil, systemName: "textformat.abc", label: .emblemInitials)
+            }
+
+            ForEach(Emblem.allCases) { symbol in
+                button(for: symbol, systemName: symbol.systemName, label: symbol.label)
             }
         }
-        .animation(.snappy, value: appearance)
+        .animation(.snappy, value: selection)
+        .animation(.snappy, value: tint)
+        .sensoryFeedback(.selection, trigger: selection)
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Symbol")
     }
 
-    @ViewBuilder
-    private func symbolMark(_ symbol: GroupSymbol) -> some View {
-        let isSelected = appearance.symbol == symbol
+    private func button(
+        for symbol: Emblem?,
+        systemName: String,
+        label: LocalizedStringResource
+    ) -> some View {
+        Button {
+            selection = symbol
+        } label: {
+            mark(systemName: systemName, isSelected: selection == symbol)
+                .frame(width: target, height: target)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selection == symbol ? [.isSelected] : [])
+    }
 
-        Image(systemName: symbol.systemName)
+    private func mark(systemName: String, isSelected: Bool) -> some View {
+        Image(systemName: systemName)
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(isSelected ? Color.white : Color.secondary)
             .frame(width: 36, height: 36)
@@ -118,7 +167,7 @@ struct AppearancePicker: View {
             }
             .background {
                 Circle()
-                    .fill(appearance.color.tint.gradient)
+                    .fill(tint.tint.gradient)
                     .opacity(isSelected ? 1 : 0)
             }
     }

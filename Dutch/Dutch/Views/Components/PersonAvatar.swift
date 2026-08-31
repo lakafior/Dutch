@@ -22,6 +22,13 @@ struct PersonAvatar: Equatable {
     /// "?" that reads like an error.
     var initials: String?
     var color: PaletteColor
+    /// A symbol the member picked, drawn *instead of* their initials.
+    ///
+    /// Nil for everybody until they choose one, which is what keeps the derived
+    /// avatar the default: initials from a name that is already there beat a
+    /// glyph nobody asked for, and a roster of identical `person.fill` circles
+    /// would be worse than what this replaced.
+    var symbol: Emblem?
 }
 
 // MARK: - Initials
@@ -107,6 +114,17 @@ extension Person {
         get { colorName.flatMap(PaletteColor.init(rawValue:)) }
         set { colorName = newValue?.rawValue }
     }
+
+    /// The symbol somebody picked for this member, if anybody did.
+    ///
+    /// Same contract as `chosenColor`: an override rather than a source, and a
+    /// name this build has never heard of — invented by a newer version and
+    /// synced down here — falls through to `nil` and the initials, rather than
+    /// drawing the empty square an unknown SF Symbol renders as.
+    var chosenSymbol: Emblem? {
+        get { symbolName.flatMap(Emblem.init(rawValue:)) }
+        set { symbolName = newValue?.rawValue }
+    }
 }
 
 // MARK: - Roster
@@ -180,7 +198,8 @@ struct RosterAvatars {
     subscript(member: Person) -> PersonAvatar {
         PersonAvatar(
             initials: PersonAvatar.initials(from: member.name),
-            color: colors[member.objectID] ?? member.chosenColor ?? .derived(from: member.id)
+            color: colors[member.objectID] ?? member.chosenColor ?? .derived(from: member.id),
+            symbol: member.chosenSymbol
         )
     }
 }
