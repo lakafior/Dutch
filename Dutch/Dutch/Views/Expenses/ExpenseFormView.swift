@@ -266,6 +266,7 @@ struct ExpenseFormView: View {
 
         NavigationStack {
             Form {
+                expenseSection
                 detailsSection
                 paidBySection(roster, avatars)
                 splitAmongSection(slices, roster, avatars)
@@ -372,7 +373,12 @@ struct ExpenseFormView: View {
         content().font(.subheadline)
     }
 
-    private var detailsSection: some View {
+    /// What an expense *is*: a title and a figure.
+    ///
+    /// Headerless, and first. The navigation title already says which of the
+    /// three things this sheet is, and a header over two rows in a form whose
+    /// entire purpose is one number is a label nobody needed.
+    private var expenseSection: some View {
         Section {
             // Named as optional in the placeholder, because nothing else on
             // screen says so: Save stays enabled with it blank, and a field
@@ -384,6 +390,28 @@ struct ExpenseFormView: View {
                 .accessibilityIdentifier("Title")
 
             amountRow
+        }
+    }
+
+    /// The rows that already have an answer when the sheet opens.
+    ///
+    /// A section of their own rather than four `qualifier` rows trailing the
+    /// amount. The step down the type scale says *how much these matter*; a
+    /// section boundary says *what they are* — a group the user can skip in one
+    /// glance rather than four rows they have to read to discover are optional.
+    /// In the ordinary case — a single-currency group buying a round today with
+    /// no service charge — not one of them is touched, and this is where
+    /// Categories will land when it ships.
+    ///
+    /// Deliberately **not** collapsed. Three things live in here that must stay
+    /// visible: the exchange rate is *required* once a foreign currency is
+    /// chosen, `savesAsSummary` below is the only place a mis-parsed separator
+    /// or an upside-down rate can be caught, and the date's whole value is that
+    /// a user adopting the app mid-trip can see that backdating exists. Hiding
+    /// the first behind a chevron greys out Save with its explanation folded
+    /// away; hiding the third takes back the reason the row was added.
+    private var detailsSection: some View {
+        Section {
             tipRow
             currencyRow
             rateRow
@@ -394,6 +422,11 @@ struct ExpenseFormView: View {
             // Echoes back exactly what will be stored, which is the only way
             // the user can catch a mis-parsed separator — or a rate entered
             // upside down — before saving.
+            //
+            // Footer of *this* section rather than of the amount's, because the
+            // rows that change the figure are the ones directly above it — and
+            // because its other job is naming the missing rate, which is a row
+            // in here.
             if let summary = savesAsSummary {
                 Text(summary)
                     .motionContentTransition(.numericText())
@@ -427,6 +460,10 @@ struct ExpenseFormView: View {
                 Text("Date")
             }
             .datePickerStyle(.compact)
+            // The label follows `.font`; the compact style's date pill does
+            // not, so without this the row shrinks by half and reads as a
+            // mistake rather than a step down the scale.
+            .controlSize(.small)
         }
     }
 

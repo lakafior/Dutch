@@ -182,6 +182,7 @@ struct PartialPaymentSheet: View {
                     }
                     .datePickerStyle(.compact)
                     .font(.subheadline)
+                    .controlSize(.small)
                 } header: {
                     Text(header)
                 } footer: {

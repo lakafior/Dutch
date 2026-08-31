@@ -721,10 +721,31 @@ Tuesday's receipt would land in Tuesday's bucket, which is the precise filing
 error this feature exists to prevent, reintroduced by the prefill meant to save
 typing.
 
-**It sits last, and it is drawn small.** The cursor starting in the amount was a
-first-feedback-batch decision and the right one, so nothing goes above it, and
-this is the least often touched of the four rows under it. It is a `qualifier`
-— the same step down the type scale as Tip, Currency and the rate.
+**It sits last, it is drawn small, and it moved the form to two sections.** The
+cursor starting in the amount was a first-feedback-batch decision and the right
+one, so nothing goes above it, and this is the least often touched of the four
+rows under it. It is a `qualifier` — the same step down the type scale as Tip,
+Currency and the rate — with `.controlSize(.small)` beside the font, because a
+compact `DatePicker`'s label follows `.font` and its date pill does not, so the
+step down applied to half a row reads as a mistake rather than a decision.
+
+Title and Amount are now a headerless section of their own, and Tip, Currency,
+rate and Date are **Expense Details** below them, which is where Categories will
+land. The two mechanisms do different jobs: the type scale says *how much these
+matter*, the section boundary says *what they are* — a group to skip in one
+glance rather than four rows you must read to discover are optional.
+
+**The details section is deliberately not collapsed**, which was the obvious
+next step and is the wrong one. Three things in it have to stay visible. The
+exchange rate is *required* once a foreign currency is picked — and a currency
+prefills from the last one used, so mid-trip it can already be foreign on a form
+nobody has opened; behind a chevron that greys out Save with the explanation
+folded away. `savesAsSummary` is the only place a mis-parsed separator or an
+upside-down rate is catchable before saving. And the date's whole value is that
+somebody adopting the app on day three of a trip can *see* that days one and two
+are enterable — hiding it takes back the reason the row was added. Revisit when
+Categories makes it five rows, and only under the rule that the section is open
+whenever anything inside it is non-default.
 
 That widened what `qualifier` means, and the widening is the part worth keeping.
 Its rule was *qualifies the amount rather than being it*, which is true of the
