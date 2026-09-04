@@ -1329,12 +1329,27 @@ shared zone, and it does not come back out. That makes it acceptable only as a
 consequence of the tap in **19** — per expense, visible at the moment it is
 attached, never automatic and never collected in the background.
 
-On the privacy page: nothing here becomes collected data, because there is still
-no server and no analytics, and CoreLocation is not a required-reason API, so no
-`PrivacyInfo.xcprivacy` appears in a tree that has none today. What does need a
-line is the App Store nutrition label and `website/privacy/`. The README's *no
-trackers* stays true only so long as this remains opt-in and stays out of any
-background location mode.
+On privacy: nothing here becomes *collected* data in Apple's sense, which turns
+on whether the developer can reach it. Dutch opens only the `.private` and
+`.shared` CloudKit scopes and never `.public`, so a place lands in the user's own
+iCloud or in a zone shared between the members of one group, and the MapKit
+search is serviced by Apple in real time. **Data Not Collected** on the App Store
+stays accurate; `website/privacy/` gained a paragraph, in both languages. The
+README's *no trackers* stays true only so long as this remains opt-in and stays
+out of any background location mode.
+
+CoreLocation is **not** a required-reason API, so this feature did not force a
+privacy manifest — but the audit it prompted found that `UserDefaults` is one,
+and the app had no `PrivacyInfo.xcprivacy` at all. Added 2026-09-04 at
+`Dutch/Resources/`, 2 KB, declaring `1C8F.1` (the App Group suite, which is the
+path actually taken) and `CA92.1` (the app's own defaults, the fallback in
+`PersistenceController.appGroupDefaults` when the entitlement is missing), plus
+an explicit empty `NSPrivacyCollectedDataTypes` so the claim is in the binary
+rather than only in App Store Connect. Nothing else on the required-reason list
+is used — no boot time, disk space, file timestamps or active keyboard. Verify
+after a build with `find "$BUILT_PRODUCTS_DIR/Dutch.app" -name '*.xcprivacy'`:
+it has to sit at the **bundle root**, and being inside `Resources/` in the source
+tree does not stop that — the synchronized folder flattens it.
 
 *Cost: zero bytes. Three optional attributes across two model versions, and two
 CloudKit initialize-and-promotes — the second of which is outstanding.*

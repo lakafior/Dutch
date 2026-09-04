@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Dutch does not track. There is no analytics SDK, no crash reporter and
+	     no third-party code of any kind, so there are no tracking domains to
+	     name. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Deliberately empty, and it is a claim rather than an omission: nothing
+	     leaves the device in a way the developer can reach. Groups, expenses
+	     and any place attached to one live in the user's own private CloudKit
+	     database, or in a zone shared between the members of a group; the app
+	     opens only the .private and .shared database scopes, never .public.
+	     The location search and reverse geocode are serviced by Apple in real
+	     time and their results are never transmitted anywhere by this app.
+	     Matches the App Store nutrition label's "Data Not Collected". -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- `ExpenseDefaults` and the preferences beside it: who usually
+			     pays, the last currency and rate, which member of a group this
+			     device is, and the switches in Settings. -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- 1C8F.1 — the App Group suite, which is the path actually
+				     taken: everything is written to group.net.smigi.Dutch so a
+				     future widget can read it. -->
+				<string>1C8F.1</string>
+				<!-- CA92.1 — the app's own defaults, which is the fallback in
+				     `PersistenceController.appGroupDefaults` when the app group
+				     entitlement is missing. Declared because that path can run,
+				     not because it is the intended one. -->
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
