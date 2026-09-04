@@ -92,7 +92,7 @@ recorded.
 | 21 | Not started | [Location on an expense](#21-location-on-an-expense) | Latitude, longitude and the chosen name, stored on the expense. | Group the log by place — a charts screen is in **Not planned** for a reason that applies here unchanged. | Model change (pair with **12**/**16**); a shared location doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
 | 22 | Not started | [iPad and Mac](#22-ipad-and-mac) | "Designed for iPad" is a checkbox; native iPad, Catalyst and macOS are real work. | Sync needs nothing — CloudKit is per Apple Account. Two things bite: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | 432 KB for native iPad, being a saving already taken |
 | 24 | Not started | [An iMessage app](#24-an-imessage-app) | Assign a group to a group chat and manage its expenses inside Messages. | A target in this bundle, not a second app. The app group and `Intents/` already pay for most of it. May be worth more as a fix for the QR join dead-end than as a way to enter expenses. | App size — a second binary, plausibly past 2 MB with the widget. And whether an extension's writes export before the host app next launches is unverified |
-| 14 | Not started | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | The balance red and green are roughly 3.3:1 on white — probably passing as bold headline text, unverified. | Measure with a checker in both appearances. If it fails, darken the amount text specifically, not the palette. | None; it needs measuring, not arguing about |
+| 14 | Shipped | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | Measured: green failed at 2.22:1 on white, well under the 3:1 it needed. Light appearance now uses Apple's high-contrast pair. | Measured on both grounds the amount appears over. `Standing.tint` only — dark appearance already passed and was left alone. | Listing still doesn't claim it; that's metadata, not a build |
 | — | Not planned | [Receipt photos](#not-planned) | | Breaks all three constraints at once — CloudKit assets, sync weight, storage, and an image pipeline. | — |
 | — | Not planned | [Live exchange rates](#not-planned) | | Rates are frozen at entry deliberately; fetching them adds a network dependency and a cache in order to reintroduce the drift that decision removed. | — |
 | — | Not planned | [A charts tab](#not-planned) | | Swift Charts is system-provided, so technically free — and nobody opens it twice for a group with eleven expenses in it. | — |
@@ -1430,18 +1430,41 @@ the one direction of that mismatch nobody is harmed by.
 
 ### 14. Measure contrast, then claim it or fix it
 
-**Unverified, which is why it is unclaimed.** The balance figures use SwiftUI's
-semantic `.red` and `.green`. On white that is roughly 3.3:1 — under WCAG AA's
-4.5:1 for body text, but over the 3:1 that applies to large or bold text, and
-these are bold headline-sized numerals. So it probably passes, and "probably" is
-not good enough to put on a listing.
+**Measured 2026-09-04, and the guess above was wrong.** This entry used to read
+"roughly 3.3:1 on white … so it probably passes". Red was close to that. Green
+was nowhere near it:
 
-This needs measuring with a contrast checker in both appearances, not arguing
-about. If it fails, the fix is a darker red and green for the amount text
-specifically — not a palette change, since `GroupColor` already excludes red and
-green precisely so a group's tint can never be confused with a balance.
+| | on white | on grouped `F2F2F7` | AA-large, 3:1 |
+|---|---|---|---|
+| `.red` `FF3B30` | 3.55:1 | 3.18:1 | pass |
+| `.green` `34C759` | **2.22:1** | **1.99:1** | **fail** |
+| `.red` dark `FF453A` | 6.16:1 on black | 4.99:1 on `1C1C1E` | pass |
+| `.green` dark `30D158` | 10.39:1 | 8.42:1 | pass |
 
-*Cost: zero bytes if it passes; a colour pair if it doesn't.*
+The figures are bold and headline-sized, so 3:1 is the applicable bar rather
+than 4.5:1 — and green missed it on both grounds. It is also the worse half to
+lose: red says *you owe*, which the caption repeats anyway, while green is the
+number people go looking for.
+
+Light appearance now uses Apple's own Increase Contrast variants, `D70015` and
+`248A3D` — 5.38:1 and 4.40:1 on white, 4.83:1 and 3.94:1 on grouped. Using
+Apple's pair rather than an invented one means this is the palette the system
+would already have swapped to for anyone with that setting on; it just stops
+waiting to be asked.
+
+Dark appearance was left on the semantic colours deliberately. It already passed
+with room, and substituting a darker pair on a dark ground would have removed
+contrast rather than added it.
+
+Confined to `Standing.tint`, which is the amount text and nothing else —
+`PaletteColor` still excludes red and green so a group's tint can't be mistaken
+for a balance. `ErrorBanner`'s red is a glyph, not text, and clears the 3:1
+non-text bar at 3.55:1. And colour was never the only carrier: `caption(isMe:)`
+says the same thing in words, which makes this a WCAG 1.4.3 fix rather than a
+1.4.1 one.
+
+*Cost: zero bytes. The App Store listing still doesn't claim it — that is
+metadata rather than a build, and is now a claim the app can actually support.*
 
 ---
 
