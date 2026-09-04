@@ -6,7 +6,7 @@
 
 **Split a dinner, a trip or a flat — and always know who owes what.**
 
-No accounts. No servers. No trackers. Under 2 MB.
+No accounts. No servers. No trackers. Smaller than a photo.
 
 [![Download on the App Store](https://img.shields.io/badge/App_Store-Download-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/app/id6795190862)
 [![Website](https://img.shields.io/badge/dutch.smigi.net-Website-1f2937?style=for-the-badge)](https://dutch.smigi.net)

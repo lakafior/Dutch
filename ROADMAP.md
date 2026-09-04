@@ -89,7 +89,7 @@ recorded.
 | 16 | Shipped | [Several people paid](#16-several-people-paid) | Several payers on one trip through the form, saved as one ordinary expense each. | The workaround being exactly correct is what made it cheap: the app performs it. No model change, no calculator change, nothing new for an old build to miss. | Buys entry convenience, not a tidier log — you still get one row per payer |
 | 19 | Not started | [The Nearby button](#19-the-nearby-button) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalPointsOfInterestRequest`, not `MKLocalSearch.Request` — the latter searches for text. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
 | 20 | Not started | [The currency, from the country the chosen place is in](#20-the-currency-from-the-country-the-chosen-place-is-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, and the country comes free from the picked `MKMapItem`, so no `CLGeocoder`. The trap is carrying the previous country's *rate* across; `onChange(of: currencyCode)` already handles it, so let it run. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
-| 21 | Not started | [The place on the expense](#21-the-place-on-the-expense) | The chosen name, stored on the expense — one optional `String`, not a coordinate pair. | Group the log by place; a charts screen is in **Not planned** for a reason that applies here unchanged, and a field promoted to the Production schema can never be removed. | Dutch 8 and a promote of its own — **12** and **16** shipped without a model version, so there is nothing left to pair with. A shared place doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
+| 21 | Not started | [The place on the expense](#21-the-place-on-the-expense) | The chosen name and its coordinates, stored on the expense; the row in the form opens the pin in Apple Maps. | A pin glyph marks the row in the log, and the name appears in words only once the title no longer says it. Grouping the log by place is still open — the log is already grouped by day. | Dutch 8 and Dutch 9, each with a promote of its own; **12** and **16** shipped without a model version, so there was nothing to pair with. **Dutch 9 is not promoted yet.** A shared place doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label line |
 | 22 | Not started | [iPad and Mac](#22-ipad-and-mac) | "Designed for iPad" is a checkbox; native iPad, Catalyst and macOS are real work. | Sync needs nothing — CloudKit is per Apple Account. Two things bite: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | 432 KB for native iPad, being a saving already taken |
 | 24 | Not started | [An iMessage app](#24-an-imessage-app) | Assign a group to a group chat and manage its expenses inside Messages. | A target in this bundle, not a second app. The app group and `Intents/` already pay for most of it. May be worth more as a fix for the QR join dead-end than as a way to enter expenses. | App size — a second binary, plausibly past 2 MB with the widget. And whether an extension's writes export before the host app next launches is unverified |
 | 14 | Shipped | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | Measured: green failed at 2.22:1 on white, well under the 3:1 it needed. Light appearance now uses Apple's high-contrast pair. | Measured on both grounds the amount appears over. `Standing.tint` only — dark appearance already passed and was left alone. | Listing still doesn't claim it; that's metadata, not a build |
@@ -1129,12 +1129,13 @@ permission question separately.
 
 ### 19–21. Nearby: one tap, three consequences
 
-**Written on 2026-09-04, and not yet true in Production.** All three are
-implemented and the app builds, but `Dutch 8` has had neither the CloudKit
-initialize nor the promote, and nothing has run on a device — so the entries
-below still read as a plan rather than as shipped. What is left is in
-*Dutch 8, and the order it has to happen in*, and the two-build check under
-*Fallback for peers on an older build*.
+**Written on 2026-09-04, and half-promoted.** All three are implemented and
+running on a device. `Dutch 8` (`CD_placeName`) was initialized and promoted the
+same day; **`Dutch 9` — `CD_latitude` and `CD_longitude` — has had neither**, and
+until it does, any TestFlight or App Store build that attaches a place will fail
+mirroring outright. The order is in *Dutch 9, and the order it has to happen in*
+below, and the two-build check under *Fallback for peers on an older build* is
+still outstanding.
 
 These three were written up separately, and the separation was the mistake.
 They are not three features with three permission stories and three switches.
@@ -1210,6 +1211,15 @@ Three things stand in front of it:
 So the shape is a **Nearby button, not a prefill** — which resolves the first
 objection and the third at once.
 
+**The title is filled only when it is empty**, decided 2026-09-04 after the
+first version overwrote it outright. That version's reasoning was that a tap
+plus a row chosen is two explicit answers to "what is this called", and it was
+fine as far as it went; what it lost was the person who typed *Anna's birthday*,
+then attached the café, and watched their sentence replaced by a shop sign.
+Typing is the more specific of the two answers and the one that cost effort.
+Nothing is lost by leaving a written title alone, because the place attaches
+either way and the row in the form is what records it.
+
 The service is `ExpenseNotifier` again, in a different framework. That type is
 the codebase's worked example of a permission-gated feature: `@MainActor`,
 `ObservableObject`, a published `authorization`, an `enable()` that can come back
@@ -1274,25 +1284,42 @@ in DutchKit. No model change.*
 The name that was chosen, stored on the `Expense`, so that "how much did we
 spend at which place" can be answered later.
 
-**One optional `String` — `placeName` — and not latitude and longitude.** This
-entry used to ask for all three, and to say the model version should be shared
-with **12** and **16**. Both halves are now void:
+**Three attributes after all — `placeName` in `Dutch 8`, then `latitude` and
+`longitude` in `Dutch 9`** — but not for the reason this entry originally gave,
+and it is worth being exact about which argument survived.
 
-- **12 and 16 shipped without touching the schema.** Exact amounts became cent
-  weights in the weighting that already existed; several payers became several
-  ordinary `Expense` rows, decomposed at entry in `GroupStore`. So there is no
-  version to share and Dutch 8 is location-only, which removes the economy this
-  entry was counting on and turns "three attributes for the price of one
-  promote" back into a real question.
-- **A field promoted to the Production CloudKit schema can never be removed.**
-  That is the argument that settles it. Nothing in the app has a use for
-  coordinates: the overview they would serve is a charts screen, and *A charts
-  tab* is in **Not planned** below for a reason that applies here unchanged —
-  nobody opens it twice for a group with eleven expenses in it. Grouping the
-  expense list by place, the same trick **Categories** uses, needs the name
-  alone. Permanent speculative schema is a worse trade than a second model
-  version, which this project has now done seven times and has a written
-  procedure for.
+The original pairing advice is void: **12 and 16 shipped without touching the
+schema.** Exact amounts became cent weights in the weighting that already
+existed; several payers became several ordinary `Expense` rows, decomposed at
+entry in `GroupStore`. There was no version to share.
+
+So `Dutch 8` shipped as name-only, on the argument that **a field promoted to
+the Production CloudKit schema can never be removed** and nothing in the app had
+a use for coordinates — the overview they would serve being a charts screen,
+which is in **Not planned** below.
+
+**That was overturned on 2026-09-04 by a use the argument had not considered:
+opening the place on a map.** Not an overview of anything, and not a screen —
+one tap on the row already in the form, landing on the pin in Apple Maps. That
+is the answer to "where was this", asked about a single expense, by somebody
+looking at it; and it cannot be done from a name. A name search opens whichever
+branch of the chain is nearest *now*, which on a trip home from Kraków is the
+wrong city.
+
+The costs were taken deliberately and both stand:
+
+- **A second promote**, three weeks of runtime after the first if it comes to
+  that. Cheap, mechanical, and written down below.
+- **The permanence.** `CD_latitude` and `CD_longitude` are in the Production
+  schema forever now. That is the real price, and it was paid for a feature
+  somebody asked for rather than for one that might be wanted later — which is
+  the distinction the original argument was actually reaching for, and stated
+  badly as "nothing has a use for coordinates".
+
+What did **not** change is the privacy shape: still per expense, still only as
+the consequence of a tap on a row the user chose, still removable, and still no
+background location. A coordinate is a sharper fact than a name and the privacy
+pages say so plainly rather than eliding it.
 
 The privacy question survives the trim and is easier to answer for a name than
 for a coordinate pair: **a place on a shared expense is a place shared with the
@@ -1309,24 +1336,32 @@ line is the App Store nutrition label and `website/privacy/`. The README's *no
 trackers* stays true only so long as this remains opt-in and stays out of any
 background location mode.
 
-*Cost: zero bytes. One optional attribute, one model version, one CloudKit
-initialize-and-promote.*
+*Cost: zero bytes. Three optional attributes across two model versions, and two
+CloudKit initialize-and-promotes — the second of which is outstanding.*
 
-#### Dutch 8, and the order it has to happen in
+#### Dutch 9, and the order it has to happen in
 
 The order is the reverse of the one that feels natural, and this is the step
-that gets missed:
+that gets missed. It was done once for `Dutch 8` and is **outstanding for
+`Dutch 9`**:
 
-1. Add `Dutch 8.xcdatamodel` with `placeName` optional, bump `.xccurrentversion`.
+1. Add the model version — `Dutch 9.xcdatamodel`, `latitude` and `longitude`
+   optional and non-scalar — and bump `.xccurrentversion`.
 2. Run once in Xcode signed in to iCloud with `-initialize-cloudkit-schema`.
    Skipping this on the theory that mirroring creates fields lazily is the
    documented trap: it does, but only as records populating them actually sync,
    so the console reports "0 changes to deploy" and everything looks fine.
 3. **Promote to Production, then ship.** The schema is server-side, so it can
    land before the binary does. Shipping first produces
-   `Cannot create or modify field 'CD_placeName' in record 'CD_Expense' in
+   `Cannot create or modify field 'CD_latitude' in record 'CD_Expense' in
    production schema`, which aborts mirroring entirely and takes sharing down
    with it — a bug visible only in a distributed build.
+
+**Non-scalar, and that is not a formatting preference.** A scalar `Double`
+attribute defaults to `0.0`, and 0,0 is a real point in the Gulf of Guinea —
+every placeless expense in the app would sit on the same island, and no reader
+could tell "no coordinate" from "somebody was there". `NSNumber?` makes absent
+mean absent.
 
 #### Fallback for peers on an older build
 
@@ -1379,15 +1414,22 @@ Three commits on one branch, each shippable alone:
    CloudKit anywhere near it.
 2. The currency from the picked place's `isoCountryCode`, plus the DutchKit type
    and its tests. That is **20**, pure form logic.
-3. Dutch 8, `placeName`, and showing the place on the row. That is **21**, and
-   it is the only one carrying the initialize-and-promote.
+3. Dutch 8, `placeName`, and showing the place on the row; then Dutch 9 and the
+   coordinates behind the Maps link. That is **21**, and it is the only one
+   carrying the initialize-and-promote — twice.
 
    Written as a label rather than as grouping, which this entry originally
    called for. A pick writes the title *and* the place, so on the ordinary row
-   the two are the same string and the place is not drawn at all — it appears on
-   the payer's line only once somebody renames the expense. Grouping needs a
-   second answer first: the log is already grouped by day, and a second axis
-   over the same list is a control, not an attribute. Left open deliberately.
+   the two are the same string and the *words* are not repeated — the place
+   appears on the payer's line only once somebody renames the expense. A pin
+   glyph beside the title marks the attachment in every case, added after the
+   first version left an attached place with no trace on the row at all: for
+   something that syncs to the whole group, "open the form and look" is the
+   wrong way to find out it is there.
+
+   Grouping needs a second answer first: the log is already grouped by day, and
+   a second axis over the same list is a control, not an attribute. Left open
+   deliberately.
 
 Two mechanical notes that are easy to lose, both from the **Localization**
 section below:

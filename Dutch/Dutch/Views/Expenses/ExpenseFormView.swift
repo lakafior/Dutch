@@ -175,12 +175,12 @@ struct ExpenseFormView: View {
 
     /// The place this expense was attached to, if one was picked.
     ///
-    /// Kept separately from `title` even though a pick writes both, because the
-    /// two answer different questions the moment either is edited: the title is
-    /// what this expense is *called* — renameable to "Anna's birthday" — and
-    /// this is where it happened. Storing only the title would make the second
-    /// fact disappear the first time somebody rewords the first.
-    @State private var placeName: String?
+    /// Kept separately from `title` even though a pick can write both, because
+    /// the two answer different questions the moment either is edited: the
+    /// title is what this expense is *called* — "Anna's birthday" — and this is
+    /// where it happened. Storing only the title would make the second fact
+    /// disappear the first time somebody rewords the first.
+    @State private var attached: ExpensePlace?
 
     /// The foreign currencies this group has already spent in, newest first.
     ///
@@ -216,7 +216,7 @@ struct ExpenseFormView: View {
         _date = State(initialValue: now)
         self.seedDate = now
         _category = State(initialValue: nil)
-        _placeName = State(initialValue: nil)
+        _attached = State(initialValue: nil)
 
         // Mid-trip, the next expense is almost always in the same currency as
         // the last one, at the same rate. Entering ten Polish receipts should
@@ -295,7 +295,7 @@ struct ExpenseFormView: View {
         // bought an hour later, possibly in the next bar — has not earned it.
         // Everything else here is a prefill that costs a correction when it is
         // wrong; this one would be a wrong fact, synced.
-        _placeName = State(initialValue: editing == nil ? nil : expense.placeName)
+        _attached = State(initialValue: editing == nil ? nil : ExpensePlace(expense))
 
         // An expense with no stored weighting is an even split, and a uniform
         // weighting is stored as none at all — so the toggle starts on exactly
@@ -797,17 +797,37 @@ struct ExpenseFormView: View {
     /// advertise a feature most groups will never turn on.
     @ViewBuilder
     private var placeRow: some View {
-        if let attached = placeName {
+        if let place = attached {
             qualifier {
                 HStack {
-                    Label(attached, systemImage: "mappin.and.ellipse")
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    // Two controls in one row, so each needs its own hit area:
+                    // the name opens Maps, the cross detaches, and a row-wide
+                    // tap target would make the destructive one the easy one to
+                    // hit by accident.
+                    Button {
+                        NearbyPlaces.openInMaps(place)
+                    } label: {
+                        Label(place.name, systemImage: "mappin.and.ellipse")
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    // Everything attached before `Dutch 9` has a name and no
+                    // point, and a button that silently does nothing is worse
+                    // than a label — so those rows stay labels.
+                    .disabled(!place.isMappable)
+                    .accessibilityLabel(
+                        place.isMappable
+                            ? Text("\(place.name), open in Maps")
+                            : Text(place.name)
+                    )
 
                     Spacer(minLength: 12)
 
                     Button {
-                        placeName = nil
+                        attached = nil
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
@@ -1557,17 +1577,25 @@ struct ExpenseFormView: View {
 
     // MARK: - Nearby
 
-    /// Takes the name of the place the user picked, and — if they asked for it
-    /// — the currency of the country that place is in.
+    /// Takes the place the user picked: always as the attachment, and as the
+    /// title only when there isn't one yet.
     ///
-    /// Overwrites whatever was typed, deliberately: the button was tapped and
-    /// the row was chosen, which is two explicit answers to "what should this
-    /// be called". Merging the two — appending, or only filling a blank field —
-    /// would make the same tap do different things depending on state the user
-    /// is not looking at.
+    /// The first version overwrote the title outright, on the reasoning that a
+    /// tap plus a row chosen is two explicit answers to "what is this called".
+    /// The reasoning was fine and the behaviour was wrong: the case it loses is
+    /// somebody who typed *Anna's birthday*, then attached the café — and had
+    /// their sentence replaced by a shop sign. Typing is the more specific
+    /// answer of the two, and it is also the one that took effort.
+    ///
+    /// So an empty title takes the name and a written one is left alone. The
+    /// place attaches either way, which is what makes this safe: nothing is
+    /// lost by not filling the title, because the attachment is the thing being
+    /// recorded and the row below shows it.
     private func adopt(_ place: NearbyPlaces.Place) {
-        title = place.name
-        placeName = place.name
+        if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            title = place.name
+        }
+        attached = ExpensePlace(place)
         adoptCurrency(of: place)
     }
 
@@ -1788,7 +1816,7 @@ struct ExpenseFormView: View {
                     contributions: contributionWeights,
                     splitAmong: selectedParticipants,
                     category: category,
-                    at: placeName,
+                    at: attached,
                     // Only when it actually moved. An untouched picker passes
                     // `nil`, which leaves the stored value exactly as it was —
                     // including leaving a dateless record dateless, rather than
@@ -1809,7 +1837,7 @@ struct ExpenseFormView: View {
                     splitAmong: selectedParticipants,
                     in: group,
                     category: category,
-                    at: placeName,
+                    at: attached,
                     on: date,
                     paidIn: foreign,
                     shares: weights,

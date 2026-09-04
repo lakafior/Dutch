@@ -184,7 +184,7 @@ struct GroupStore {
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
         category: ExpenseCategory? = nil,
-        at place: String? = nil,
+        at place: ExpensePlace? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -251,7 +251,7 @@ struct GroupStore {
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
         category: ExpenseCategory? = nil,
-        at place: String? = nil,
+        at place: ExpensePlace? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -351,7 +351,7 @@ struct GroupStore {
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         category: ExpenseCategory? = nil,
-        at place: String? = nil,
+        at place: ExpensePlace? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -444,7 +444,7 @@ struct GroupStore {
         contributions: [Person: Int],
         splitAmong participants: Set<Person>,
         category: ExpenseCategory? = nil,
-        at place: String? = nil,
+        at place: ExpensePlace? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -528,7 +528,7 @@ struct GroupStore {
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         category: ExpenseCategory?,
-        place: String?,
+        place: ExpensePlace?,
         foreign: ForeignAmount?,
         shares: [UUID: Int]?,
         exactShares: Set<UUID>,
@@ -545,8 +545,15 @@ struct GroupStore {
         // physically was, so an edit that removes it has to actually remove it
         // from the shared record. An attribute that can be set but not cleared
         // would make that impossible without deleting the expense.
-        let placed = place?.trimmingCharacters(in: .whitespacesAndNewlines)
-        expense.placeName = (placed?.isEmpty ?? true) ? nil : placed
+        expense.placeName = place?.name
+
+        // Written as a pair and cleared as a pair, so an expense can never end
+        // up with a coordinate belonging to a place it no longer names. `nil`
+        // and not zero: 0,0 is a real point in the Gulf of Guinea, and a
+        // scalar attribute defaulting to it would put every placeless expense
+        // in the app on the same island.
+        expense.latitude = place?.latitude.map(NSNumber.init(value:))
+        expense.longitude = place?.longitude.map(NSNumber.init(value:))
 
         // Stored as `nil` when blank rather than as `""`, because a title is
         // optional at the form and every screen already falls back on a

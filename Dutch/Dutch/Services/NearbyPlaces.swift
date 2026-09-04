@@ -51,6 +51,12 @@ final class NearbyPlaces: NSObject, ObservableObject {
         /// prefill. Optional because MapKit does not promise it, and a missing
         /// one has to mean "don't prefill" rather than "prefill with home".
         let regionCode: String?
+        /// The point itself, kept so the expense it is attached to can be
+        /// opened on a map later. Optional because a placemark is not obliged
+        /// to have one, and a row with no coordinate is still a usable title.
+        let latitude: Double?
+        let longitude: Double?
+
         /// Whether this came from the address fallback rather than from the
         /// list of places.
         ///
@@ -64,12 +70,17 @@ final class NearbyPlaces: NSObject, ObservableObject {
             street: String?,
             distance: CLLocationDistance?,
             regionCode: String?,
+            coordinate: CLLocationCoordinate2D?,
             isAddress: Bool = false
         ) {
             self.name = name
             self.street = street
             self.distance = distance
             self.regionCode = regionCode
+            // Unwrapped here, at the one boundary that has CoreLocation, so
+            // nothing downstream needs it — see `ExpensePlace`.
+            self.latitude = coordinate?.latitude
+            self.longitude = coordinate?.longitude
             self.isAddress = isAddress
         }
     }
@@ -311,6 +322,10 @@ final class NearbyPlaces: NSObject, ObservableObject {
                 street: mark.locality == name ? nil : mark.locality,
                 distance: nil,
                 regionCode: mark.isoCountryCode,
+                // The placemark's own point where it has one, and otherwise the
+                // fix it was derived from — which is the same spot to within
+                // the accuracy this feature ever had.
+                coordinate: (mark.location ?? fix).coordinate,
                 isAddress: true
             )
         ]
@@ -330,6 +345,29 @@ final class NearbyPlaces: NSObject, ObservableObject {
             }
         }
         return nil
+    }
+
+    /// Opens a stored place in Apple Maps, dropping a pin that carries its
+    /// name.
+    ///
+    /// Here rather than in the view, because this is the file that owns the
+    /// MapKit import — `ExpensePlace` stays two `Double`s and a `String` so the
+    /// store and the form need no framework for it.
+    ///
+    /// An `MKPlacemark` built from a coordinate rather than a search for the
+    /// name: the name is what the user called it, not necessarily what Maps
+    /// calls it, and searching would open whatever branch of the chain is
+    /// nearest *now* — which on a trip home from Kraków is the wrong city.
+    @discardableResult
+    static func openInMaps(_ place: ExpensePlace) -> Bool {
+        guard let latitude = place.latitude, let longitude = place.longitude else {
+            return false
+        }
+
+        let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        item.name = place.name
+        return item.openInMaps()
     }
 
     /// Names the underlying error in a debug build and nowhere else.
@@ -356,7 +394,8 @@ final class NearbyPlaces: NSObject, ObservableObject {
             name: name,
             street: placemark.thoroughfare,
             distance: distance,
-            regionCode: placemark.isoCountryCode
+            regionCode: placemark.isoCountryCode,
+            coordinate: placemark.coordinate
         )
     }
 

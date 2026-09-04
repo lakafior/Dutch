@@ -5096,6 +5096,23 @@
           }
         }
       }
+    },
+    "%@, open in Maps" : {
+      "comment" : "VoiceOver label for the place attached to an expense. The argument is the place's name.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, open in Maps"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, otwórz w Mapach"
+          }
+        }
+      }
     }
   },
   "version" : "1.2"

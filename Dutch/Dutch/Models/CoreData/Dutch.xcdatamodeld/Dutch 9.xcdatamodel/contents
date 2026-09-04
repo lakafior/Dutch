@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23G93" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" userDefinedModelVersionIdentifier="">
+    <entity name="Expense" representedClassName="Expense" syncable="YES" codeGenerationType="class">
+        <attribute name="amount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="exchangeRate" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isReimbursement" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
+        <attribute name="longitude" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
+        <attribute name="originalAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="originalCurrencyCode" optional="YES" attributeType="String"/>
+        <attribute name="placeName" optional="YES" attributeType="String"/>
+        <attribute name="shareWeightsJSON" optional="YES" attributeType="String"/>
+        <attribute name="symbolName" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <relationship name="group" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseGroup" inverseName="expenses" inverseEntity="ExpenseGroup"/>
+        <relationship name="paidBy" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Person" inverseName="paidExpenses" inverseEntity="Person"/>
+        <relationship name="splitAmong" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Person" inverseName="sharedExpenses" inverseEntity="Person"/>
+    </entity>
+    <entity name="ExpenseGroup" representedClassName="ExpenseGroup" syncable="YES" codeGenerationType="class">
+        <attribute name="archivedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="cloudKitShareURL" optional="YES" attributeType="URI"/>
+        <attribute name="colorName" optional="YES" attributeType="String"/>
+        <attribute name="creationDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currencyCode" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="symbolName" optional="YES" attributeType="String"/>
+        <attribute name="wordSequence" optional="YES" attributeType="String"/>
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Expense" inverseName="group" inverseEntity="Expense"/>
+        <relationship name="members" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Person" inverseName="group" inverseEntity="Person"/>
+    </entity>
+    <entity name="Person" representedClassName="Person" syncable="YES" codeGenerationType="class">
+        <attribute name="cloudUserRecordName" optional="YES" attributeType="String"/>
+        <attribute name="colorName" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="symbolName" optional="YES" attributeType="String"/>
+        <relationship name="group" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseGroup" inverseName="members" inverseEntity="ExpenseGroup"/>
+        <relationship name="paidExpenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="paidBy" inverseEntity="Expense"/>
+        <relationship name="sharedExpenses" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Expense" inverseName="splitAmong" inverseEntity="Expense"/>
+    </entity>
+</model>

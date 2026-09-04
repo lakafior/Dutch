@@ -1335,6 +1335,29 @@ private struct ExpenseRow: View {
         return text.caseInsensitiveCompare(title ?? "") == .orderedSame ? nil : text
     }
 
+    /// A pin beside the title when this expense is attached to a place.
+    ///
+    /// Without it an attached place leaves no trace on the row at all: picking
+    /// writes the title *and* the place, so the two are usually the same string
+    /// and `place` below deliberately draws nothing. That made opening the form
+    /// the only way to find out whether an expense was pinned — which, for a
+    /// fact that syncs to everyone in the group, is the wrong way round.
+    ///
+    /// A glyph and not the words, for the reason `categoryMark` is one: the row
+    /// is scanned, and the words are usually already on it as the title.
+    @ViewBuilder
+    private var placeMark: some View {
+        if expense.placeName?.isEmpty == false {
+            Image(systemName: "mappin.and.ellipse")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                // The row's own label already reads the place out where it
+                // differs from the title; a second "pinned" would be a word
+                // VoiceOver says on every such row for no new information.
+                .accessibilityHidden(true)
+        }
+    }
+
     /// The second line: who paid, and where, when the two fit together.
     ///
     /// Joined onto the payer's line rather than given one of its own. This row
@@ -1403,6 +1426,7 @@ private struct ExpenseRow: View {
                         categoryMark
                         Text(title)
                             .font(.body)
+                        placeMark
                     }
 
                     // Three lines once — title, date, "Paid by X". The date
@@ -1423,6 +1447,7 @@ private struct ExpenseRow: View {
                         Text(payer)
                             .font(.body)
                             .accessibilityLabel(accessiblePayer)
+                        placeMark
                     }
 
                     // Only ever drawn for an expense somebody stripped the
