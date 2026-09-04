@@ -548,6 +548,220 @@ struct GroupStoreTests {
         #expect(expense.shareWeights.count == 2)
     }
 
+    // MARK: - Several payers
+
+    /// The whole design in one assertion: there is no multi-payer record, only
+    /// several ordinary ones.
+    @Test("Several payers become one ordinary expense each")
+    func severalPayersBecomeSeparateExpenses() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpenses(
+            title: "Taxi", amount: Money(amount: 50.00),
+            contributions: [alice: 3_000, bob: 2_000],
+            splitAmong: [alice, bob], in: group
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 2)
+        #expect(expenses.map { Money(amount: $0.amount) }.reduce(Money.zero, +) == Money(cents: 5_000))
+
+        let byPayer = Dictionary(
+            uniqueKeysWithValues: expenses.map { ($0.paidBy?.name ?? "?", Money(amount: $0.amount)) }
+        )
+        #expect(byPayer["Alice"] == Money(cents: 3_000))
+        #expect(byPayer["Bob"] == Money(cents: 2_000))
+    }
+
+    /// And the reason it is allowed to be that: the balances are the ones a
+    /// single payment with two payers would have produced. Alice fronted 30 of
+    /// a 50 bill they split evenly, so she is up 5.
+    @Test("Balances match one payment with two payers")
+    func severalPayersProduceTheSameBalances() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpenses(
+            title: "Taxi", amount: Money(amount: 50.00),
+            contributions: [alice: 3_000, bob: 2_000],
+            splitAmong: [alice, bob], in: group
+        )
+
+        let balances = group.balances
+        let aliceBalance = try #require(balances.first { $0.participant.name == "Alice" })
+        let bobBalance = try #require(balances.first { $0.participant.name == "Bob" })
+
+        #expect(aliceBalance.amount == Money(cents: 500))
+        #expect(bobBalance.amount == Money(cents: -500))
+    }
+
+    /// The commonest expense there is must not take a different path just
+    /// because a second one now exists.
+    @Test("A lone payer writes a single ordinary expense")
+    func lonePayerWritesOneExpense() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpenses(
+            title: "Taxi", amount: Money(amount: 50.00),
+            contributions: [alice: 1],
+            splitAmong: [alice, bob], in: group
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 1)
+        #expect(expenses.first?.paidBy == alice)
+        #expect(Money(amount: try #require(expenses.first).amount) == Money(cents: 5_000))
+    }
+
+    /// Contributions are weights, so they divide the way everything else in
+    /// this app does — the records reconstruct the payment exactly however the
+    /// remainder falls.
+    @Test("Contributions that don't divide evenly still sum to the payment")
+    func contributionsSumToThePayment() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+        let carol = try store.addMember(named: "Carol", to: group)
+
+        try store.addExpenses(
+            title: "Taxi", amount: Money(amount: 10.00),
+            contributions: [alice: 1, bob: 1, carol: 1],
+            splitAmong: [alice, bob, carol], in: group
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 3)
+        #expect(expenses.map { Money(amount: $0.amount) }.reduce(Money.zero, +) == Money(cents: 1_000))
+    }
+
+    /// Provenance follows the money it belongs to rather than being copied
+    /// whole onto every record, which would claim each payer handed over the
+    /// entire foreign figure.
+    @Test("A foreign original is divided across the records")
+    func foreignProvenanceIsDivided() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        let foreign = try #require(ForeignAmount(amount: 400.00, currencyCode: "HUF", rate: 4.0))
+
+        try store.addExpenses(
+            title: "Taxi", amount: Money(amount: 100.00),
+            contributions: [alice: 5_000, bob: 5_000],
+            splitAmong: [alice, bob], in: group, paidIn: foreign
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 2)
+        #expect(expenses.allSatisfy { $0.originalCurrencyCode == "HUF" })
+        #expect(expenses.map { $0.originalAmount }.reduce(0, +) == 400.00)
+    }
+
+    /// Editing is where a payer is usually remembered — the taxi is already in
+    /// the log when somebody says they chipped in. The edited record keeps its
+    /// identity and shrinks; the other payer arrives as a new row.
+    @Test("Adding a payer on an edit splits the expense in two")
+    func editingAddsAPayer() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 50.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group
+        )
+        let original = try #require((group.expenses as? Set<Expense>)?.first)
+        let originalID = try #require(original.id)
+
+        try store.update(
+            original,
+            title: "Taxi",
+            amount: Money(amount: 50.00),
+            contributions: [alice: 3_000, bob: 2_000],
+            splitAmong: [alice, bob]
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 2)
+        // The row the user was looking at is still the row they were looking at.
+        #expect(expenses.contains { $0.id == originalID })
+        #expect(expenses.first { $0.id == originalID }?.paidBy == alice)
+        #expect(expenses.map { Money(amount: $0.amount) }.reduce(Money.zero, +) == Money(cents: 5_000))
+
+        let aliceBalance = try #require(group.balances.first { $0.participant.name == "Alice" })
+        #expect(aliceBalance.amount == Money(cents: 500))
+    }
+
+    /// Only possible because the date is a field the form carries: a payer
+    /// added to last Tuesday's taxi has to land in last Tuesday's bucket.
+    @Test("A payer added on an edit is dated with the expense, not today")
+    func addedPayerKeepsTheDate() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        let lastTuesday = Date(timeIntervalSinceNow: -9 * 24 * 60 * 60)
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 50.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group, on: lastTuesday
+        )
+        let original = try #require((group.expenses as? Set<Expense>)?.first)
+
+        try store.update(
+            original,
+            title: "Taxi",
+            amount: Money(amount: 50.00),
+            contributions: [alice: 2_500, bob: 2_500],
+            splitAmong: [alice, bob]
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 2)
+        #expect(expenses.allSatisfy { $0.date == lastTuesday })
+    }
+
+    /// The commonest edit there is must not start creating rows.
+    @Test("An edit with one payer still rewrites in place")
+    func editingOnePayerCreatesNothing() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        try store.addExpense(
+            title: "Taxi", amount: Money(amount: 50.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group
+        )
+        let original = try #require((group.expenses as? Set<Expense>)?.first)
+        let originalID = try #require(original.id)
+
+        try store.update(
+            original,
+            title: "Cab",
+            amount: Money(amount: 60.00),
+            contributions: [bob: 1],
+            splitAmong: [alice, bob]
+        )
+
+        let expenses = try #require(group.expenses as? Set<Expense>)
+        #expect(expenses.count == 1)
+        #expect(expenses.first?.id == originalID)
+        #expect(expenses.first?.paidBy == bob)
+        #expect(expenses.first?.title == "Cab")
+    }
+
     // MARK: - Exact amounts
 
     /// The markers ride in the same JSON as the weights under keys that are

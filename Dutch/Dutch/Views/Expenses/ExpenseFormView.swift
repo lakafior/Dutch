@@ -73,7 +73,40 @@ struct ExpenseFormView: View {
     /// Units of `currencyCode` per one unit of the group's currency. Text for
     /// the same reason `amountText` is.
     @State private var rateText: String
-    @State private var selectedPayer: Person?
+    /// Who put money in. A set rather than one person because more than one
+    /// can, and one is simply the common size of it.
+    ///
+    /// Several payers are offered only when *adding*, which includes a
+    /// duplicate. An edit rewrites one record in place, so letting it grow a
+    /// second payer would mean a save that splits the row in two — a form that
+    /// silently creates records is worse than one that asks you to add the
+    /// second yourself.
+    @State private var selectedPayers: Set<Person> = []
+    /// What each payer put in, once there is more than one.
+    ///
+    /// Against the **tipped** figure, unlike `exactAmounts` on the sharer side,
+    /// and the asymmetry is real rather than an oversight: a sharer's exact
+    /// figure is a line off a receipt and receipts are printed before the tip,
+    /// while a payer's is cash that actually changed hands and the tip was in
+    /// it. Both are still relative once stored — see `GroupStore.addExpenses` —
+    /// so the conversion carries through either way.
+    @State private var payerAmounts: [Person: Money] = [:]
+    /// Whether the rows under **Paid By** select one payer or several.
+    ///
+    /// Off, and a tap *replaces* the payer. Correcting who paid is far and away
+    /// the commoner action — several people putting money in is the rare one —
+    /// and multi-select made the common case cost two taps: pick the right
+    /// person, then unpick the wrong one. A mode nobody asked for should not
+    /// tax the tap everybody makes.
+    ///
+    /// The same shape as `Uneven split` one section below, deliberately: this
+    /// form already teaches that a toggle at the foot of a section changes what
+    /// the rows in it do, and that is a lesson better taught twice than twice
+    /// over in two different ways.
+    @State private var severalPayers = false
+    /// The payer whose contribution is being typed, and the text of it.
+    @State private var payerTarget: Person?
+    @State private var payerText = ""
     @State private var selectedParticipants: Set<Person> = []
     /// What each member pays as a percentage of a full share, used only while
     /// `splitsEvenly` is off. A member with no entry pays a full 100%.
@@ -157,7 +190,9 @@ struct ExpenseFormView: View {
         // Splitting across everyone is what the app is for; "nobody" was never
         // a useful starting point, and cost a tap per member to escape.
         _selectedParticipants = State(initialValue: Set(roster))
-        _selectedPayer = State(initialValue: ExpenseDefaults.lastPayer(in: group, among: roster))
+        _selectedPayers = State(
+            initialValue: Set(ExpenseDefaults.lastPayer(in: group, among: roster).map { [$0] } ?? [])
+        )
         _title = State(initialValue: "")
         _amountText = State(initialValue: "")
         _splitsEvenly = State(initialValue: true)
@@ -210,7 +245,7 @@ struct ExpenseFormView: View {
         // payer is the thing the user came to change, and carrying the original
         // over would let a whole round be logged against the wrong person with
         // one tap on Save. An empty picker keeps Save disabled until they say.
-        _selectedPayer = State(initialValue: editing == nil ? nil : expense.paidBy)
+        _selectedPayers = State(initialValue: editing == nil ? [] : Set([expense.paidBy].compactMap { $0 }))
         _selectedParticipants = State(initialValue: (expense.splitAmong as? Set<Person>) ?? [])
 
         if let foreign = expense.foreignAmount {
@@ -384,11 +419,19 @@ struct ExpenseFormView: View {
             .onChange(of: currencyCode) { _, newCode in
                 rateText = Self.rateText(for: newCode, in: group)
             }
-            .onChange(of: selectedPayer) { _, newPayer in
-                // Most of the time the payer also shares the expense, so
-                // preselect them. They can still be toggled back off.
-                if let newPayer {
-                    selectedParticipants.insert(newPayer)
+            .onChange(of: selectedPayers) { previous, current in
+                // Most of the time a payer also shares the expense, so
+                // preselect them. They can still be toggled back off — which is
+                // why only the newly added ones are inserted, rather than the
+                // whole set re-added on every change.
+                for payer in current.subtracting(previous) {
+                    selectedParticipants.insert(payer)
+                }
+                // A contribution belonging to somebody no longer paying would
+                // keep counting against the total, exactly as a stale share
+                // would on the other side of the form.
+                for payer in previous.subtracting(current) {
+                    payerAmounts[payer] = nil
                 }
             }
             // One haptic per change to the selection as a whole. Per-row
@@ -401,7 +444,7 @@ struct ExpenseFormView: View {
             // would leave the commonest tap on this screen silent. When the
             // payer *wasn't* sharing, both fire in the same frame, which the
             // haptic engine renders as the one tap it was.
-            .sensoryFeedback(.selection, trigger: selectedPayer)
+            .sensoryFeedback(.selection, trigger: selectedPayers)
             .alert("Custom Share", isPresented: customBinding) {
                 TextField(String(localized: .customSharePercent), text: $customText)
                     .keyboardType(.numberPad)
@@ -424,6 +467,14 @@ struct ExpenseFormView: View {
                 Button(.setExactAmount, action: applyExactAmount)
             } message: {
                 Text(.exactAmountExplanation)
+            }
+            .alert("Contribution", isPresented: payerAmountBinding) {
+                TextField(String(localized: .exactAmountField), text: $payerText)
+                    .keyboardType(.decimalPad)
+                Button("Cancel", role: .cancel) { payerTarget = nil }
+                Button(.setExactAmount, action: applyContribution)
+            } message: {
+                Text(.contributionExplanation)
             }
             .alert("Custom Tip", isPresented: $showingCustomTip) {
                 // Decimal rather than number pad: 12.5% is a real service
@@ -817,7 +868,9 @@ struct ExpenseFormView: View {
     /// The old "Select…" row is gone with it. Nothing checked already says
     /// nothing is chosen, and Save stays disabled until something is.
     private func paidBySection(_ members: [Person], _ avatars: RosterAvatars) -> some View {
-        Section("Paid By") {
+        let contributions = contributionPreview
+
+        return Section {
             if members.isEmpty {
                 Text(.addMembersFirst)
                     .foregroundStyle(.secondary)
@@ -826,10 +879,37 @@ struct ExpenseFormView: View {
                     PayerRow(
                         name: member.name ?? "?",
                         avatar: avatars[member],
-                        isSelected: selectedPayer == member,
-                        onTap: { selectedPayer = member }
+                        isSelected: selectedPayers.contains(member),
+                        // Nothing at all until a second payer joins, so the
+                        // ordinary expense — one person, whole amount — is the
+                        // row it has always been. The control appearing *is*
+                        // how the form says the rules just changed.
+                        contribution: severalPayers && selectedPayers.count > 1
+                            ? (payerAmounts[member] ?? contributions[member])
+                            : nil,
+                        isContributionTyped: payerAmounts[member] != nil,
+                        currencyCode: currencyCode,
+                        onTap: { togglePayer(member) },
+                        onContribution: { beginContribution(for: member) }
                     )
                 }
+
+                // Absent entirely on an edit rather than disabled: an edit
+                // rewrites one record, so there is no state this could put the
+                // form into, and a permanently greyed switch invites the
+                // question of what would turn it on.
+                if allowsSeveralPayers {
+                    Toggle("Several people paid", isOn: severalPayersBinding(members))
+                        // Nothing to divide between one person.
+                        .disabled(members.count < 2)
+                }
+            }
+        } header: {
+            Text("Paid By")
+        } footer: {
+            if let payerFooter {
+                Text(payerFooter)
+                    .motionContentTransition(.numericText())
             }
         }
     }
@@ -1103,6 +1183,205 @@ struct ExpenseFormView: View {
         return ExactSplit.plan(total: basis, fixed: fixed, sharing: sharing)
     }
 
+    /// Whether more than one payer can be chosen at all.
+    ///
+    /// Everywhere, edits included. This was add-only at first, on the reasoning
+    /// that an edit rewrites one record and has nowhere to put a second payer
+    /// without silently creating a row. Two things answered that. The row is
+    /// not silent — `payerFooter` names it before Save. And it can be dated
+    /// correctly, which is only true because the form carries a date field:
+    /// before it did, a payer added to last Tuesday's taxi would have landed in
+    /// today's bucket.
+    ///
+    /// What it replaces is worse than a created row. Remembering afterwards
+    /// that somebody else chipped in used to mean deleting the expense and
+    /// entering two — on a shared group, exactly the delete-and-re-add churn
+    /// that editing exists to prevent.
+    private var allowsSeveralPayers: Bool { true }
+
+    /// The figure the contributions are laid against: the amount with the tip
+    /// on it, still in the currency being typed.
+    ///
+    /// Tipped, where `splitBasis` is not. What a payer handed over included the
+    /// tip; what a sharer's receipt line says did not.
+    private var payerBasis: Money? { tippedAmount.map(Money.init(amount:)) }
+
+    /// How the contributions currently resolve, or `nil` when only one person
+    /// is paying and there is nothing to divide.
+    private var payerPlan: ExactSplit.Plan? {
+        guard selectedPayers.count > 1, let basis = payerBasis else { return nil }
+
+        var fixed: [UUID: Money] = [:]
+        var sharing: [UUID: Int] = [:]
+
+        for payer in selectedPayers {
+            guard let id = payer.id else { continue }
+            if let typed = payerAmounts[payer] {
+                fixed[id] = typed
+            } else {
+                // A flat weight, not a percentage. Payers have no shares to be
+                // a proportion of — somebody who hasn't said what they put in
+                // simply covers an equal part of what's left.
+                sharing[id] = 1
+            }
+        }
+
+        return ExactSplit.plan(total: basis, fixed: fixed, sharing: sharing)
+    }
+
+    /// The contributions as weights, which is all `addExpenses` needs: they are
+    /// relative, so the tip and the conversion both carry through.
+    private var contributionWeights: [Person: Int] {
+        guard selectedPayers.count > 1 else {
+            return selectedPayers.reduce(into: [:]) { $0[$1] = 1 }
+        }
+        guard let plan = payerPlan, plan.isSatisfiable else { return [:] }
+
+        return selectedPayers.reduce(into: [:]) { result, payer in
+            if let id = payer.id, let weight = plan.weights[id] {
+                result[payer] = weight
+            }
+        }
+    }
+
+    /// What each payer will be recorded as having put in, for the rows.
+    private var contributionPreview: [Person: Money] {
+        guard
+            selectedPayers.count > 1,
+            let basis = payerBasis,
+            let plan = payerPlan, plan.isSatisfiable
+        else { return [:] }
+
+        let byID = Dictionary(
+            SettlementCalculator.slices(of: basis, among: plan.weights)
+                .map { ($0.participant, $0.amount) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        return selectedPayers.reduce(into: [:]) { result, payer in
+            if let id = payer.id, let slice = byID[id] {
+                result[payer] = slice
+            }
+        }
+    }
+
+    /// Where the contributions stand against the payment, in words.
+    private var payerFooter: String? {
+        guard selectedPayers.count > 1 else { return nil }
+        guard let plan = payerPlan else {
+            return String(
+                localized: "Each of them will get an expense of their own.",
+                comment: "Shown when several payers are selected but no amount has been entered yet."
+            )
+        }
+
+        let figure = plan.remainder.magnitude.formatted(currencyCode: currencyCode)
+
+        if plan.overshoots {
+            return String(
+                localized: "That is \(figure) more than the amount above.",
+                comment: "Shown when the contributions typed for several payers come to more than the expense. The placeholder is a formatted money amount."
+            )
+        }
+
+        // The round trip is asymmetric — one thing goes in and several come
+        // back out — so the form says so before Save rather than leaving it to
+        // be discovered in the log.
+        //
+        // Worded differently on an edit, where it is not a description of how
+        // the save works but a warning: rows are about to appear and this one
+        // is about to get smaller.
+        //
+        // Deliberately without a count of the new rows. It would read better in
+        // English and would need plural variations in both languages to not
+        // read badly in Polish, which has four categories to English's two —
+        // a lot of catalog for a number that is almost always one.
+        guard isEditing else {
+            return String(
+                localized: "Saved as one expense per payer.",
+                comment: "Shown when several people paid, explaining that the app records a separate expense for each of them."
+            )
+        }
+
+        return String(
+            localized: "The other payers will be saved as separate expenses on the same date, and this one reduced to its payer's part.",
+            comment: "Shown when editing an expense and adding further payers, warning that saving will create new expenses and shrink this one."
+        )
+    }
+
+    // MARK: - Typing in a contribution
+
+    private func beginContribution(for payer: Person) {
+        payerText = payerAmounts[payer].map { DecimalInput.text($0.amount) } ?? ""
+        payerTarget = payer
+    }
+
+    private var payerAmountBinding: Binding<Bool> {
+        Binding(
+            get: { payerTarget != nil },
+            set: { if !$0 { payerTarget = nil } }
+        )
+    }
+
+    /// Clearing the field hands the payer back to an equal part of whatever the
+    /// typed contributions leave, which is the way out of having said a figure.
+    private func applyContribution() {
+        defer { payerTarget = nil }
+        guard let payer = payerTarget else { return }
+
+        withAnimation(.snappy) {
+            guard let typed = DecimalInput.parse(payerText), typed >= 0 else {
+                payerAmounts[payer] = nil
+                return
+            }
+            payerAmounts[payer] = Money(amount: typed)
+        }
+    }
+
+    private func togglePayer(_ member: Person) {
+        withAnimation(.snappy) {
+            // One tap, and it means what it has always meant. Everything below
+            // is reachable only once the toggle has said this expense is the
+            // unusual kind.
+            guard severalPayers, allowsSeveralPayers else {
+                selectedPayers = [member]
+                payerAmounts = [:]
+                return
+            }
+
+            if selectedPayers.contains(member) {
+                // Never down to nobody: the form cannot be saved without a
+                // payer, and a tap that greys out Save with no other cue reads
+                // as the row having broken.
+                guard selectedPayers.count > 1 else { return }
+                selectedPayers.remove(member)
+            } else {
+                selectedPayers.insert(member)
+            }
+        }
+    }
+
+    /// Turning several payers off keeps the topmost selected row, which is the
+    /// one the eye is already on, and discards the contributions with it —
+    /// `sharesBinding` drops a weighting the same way and for the same reason.
+    /// A figure still being applied while the form says one person paid is the
+    /// worst of both.
+    private func severalPayersBinding(_ members: [Person]) -> Binding<Bool> {
+        Binding(
+            get: { severalPayers },
+            set: { wantsSeveral in
+                withAnimation(.snappy) {
+                    severalPayers = wantsSeveral
+                    guard !wantsSeveral else { return }
+                    payerAmounts = [:]
+                    if let first = members.first(where: selectedPayers.contains) {
+                        selectedPayers = [first]
+                    }
+                }
+            }
+        )
+    }
+
     /// Whether a typed figure and a partial share are on screen at once.
     ///
     /// The condition for saying what a percentage is measured against. Not
@@ -1324,7 +1603,10 @@ struct ExpenseFormView: View {
     /// with the payer instead.
     private var isValid: Bool {
         finalAmount != nil
-            && selectedPayer != nil
+            && !selectedPayers.isEmpty
+            // Contributions have to reconstruct the payment, on the same
+            // reasoning as the split above.
+            && (payerPlan.map(\.isSatisfiable) ?? true)
             && !selectedParticipants.isEmpty
             // A split that doesn't reconstruct the whole is refused rather than
             // rounded into shape. `PartialPaymentSheet` already sets the
@@ -1336,7 +1618,10 @@ struct ExpenseFormView: View {
     // MARK: - Save
 
     private func save() {
-        guard let payer = selectedPayer, let amount = finalAmount else { return }
+        guard let amount = finalAmount else { return }
+        // The single payer, for the two paths that can only mean one: an edit
+        // rewrites one record, and `ExpenseDefaults` remembers one person.
+        let payer = selectedPayers.count == 1 ? selectedPayers.first : nil
         let foreign = foreignAmount
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let weights = weightsByID
@@ -1348,7 +1633,10 @@ struct ExpenseFormView: View {
                     editing,
                     title: trimmed,
                     amount: amount,
-                    paidBy: payer,
+                    // A lone payer is handed straight back to the ordinary
+                    // in-place rewrite, so the commonest edit there is takes
+                    // exactly the path it always did.
+                    contributions: contributionWeights,
                     splitAmong: selectedParticipants,
                     category: category,
                     // Only when it actually moved. An untouched picker passes
@@ -1361,10 +1649,13 @@ struct ExpenseFormView: View {
                     exactShares: exact
                 )
             } else {
-                try store.addExpense(
+                // One record per payer, and for the ordinary single payer that
+                // is one record written exactly as it always was — `addExpenses`
+                // hands a lone contributor straight back to `addExpense`.
+                try store.addExpenses(
                     title: trimmed,
                     amount: amount,
-                    paidBy: payer,
+                    contributions: contributionWeights,
                     splitAmong: selectedParticipants,
                     in: group,
                     category: category,
@@ -1377,6 +1668,10 @@ struct ExpenseFormView: View {
                 // earlier — often much earlier — and letting it rewrite "the
                 // last currency used" would prefill the next expense from a
                 // receipt two countries ago.
+                //
+                // And only for a lone payer: "who usually pays" cannot be two
+                // people, and picking one of them to remember would prefill the
+                // next expense with a name the user never chose.
                 remember(payer: payer, foreign: foreign)
             }
             dismiss()
@@ -1385,8 +1680,8 @@ struct ExpenseFormView: View {
         }
     }
 
-    private func remember(payer: Person, foreign: ForeignAmount?) {
-        ExpenseDefaults.rememberPayer(payer, in: group)
+    private func remember(payer: Person?, foreign: ForeignAmount?) {
+        payer.map { ExpenseDefaults.rememberPayer($0, in: group) }
         if let foreign {
             ExpenseDefaults.remember(foreign, in: group)
             // Only the foreign ones. The group's own currency is pinned to the
@@ -1413,33 +1708,64 @@ private struct PayerRow: View {
     let name: String
     let avatar: PersonAvatar
     let isSelected: Bool
+    /// What this person put in, or `nil` while only one person is paying and
+    /// the answer is "all of it".
+    let contribution: Money?
+    /// Whether that figure was typed or worked out from what the others left.
+    let isContributionTyped: Bool
+    let currencyCode: String
     let onTap: () -> Void
+    let onContribution: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Dimmed rather than hidden for the row that isn't the payer,
-                // for the same reason as the split rows: a circle that vanishes
-                // makes the list jump as the selection moves.
-                PersonIcon(avatar)
-                    .opacity(isSelected ? 1 : 0.4)
+        HStack(spacing: 12) {
+            Button(action: onTap) {
+                HStack(spacing: 12) {
+                    // Dimmed rather than hidden for a row that isn't paying,
+                    // for the same reason as the split rows: a circle that
+                    // vanishes makes the list jump as the selection moves.
+                    PersonIcon(avatar)
+                        .opacity(isSelected ? 1 : 0.4)
 
-                Text(name)
-                    .foregroundStyle(.primary)
+                    Text(name)
+                        .foregroundStyle(.primary)
 
-                Spacer(minLength: 12)
+                    Spacer(minLength: 12)
 
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.tint)
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.tint)
+                    }
                 }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            if isSelected, let contribution {
+                // Tinted only once somebody has actually said a figure. A
+                // derived one is the app's arithmetic rather than the user's
+                // decision, and colouring the two alike would make an equal
+                // share look like a choice that had been made.
+                Button(action: onContribution) {
+                    Text(contribution.formatted(currencyCode: currencyCode))
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(
+                            isContributionTyped
+                                ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary)
+                        )
+                        .motionContentTransition(.numericText())
+                        .padding(.vertical, 12)
+                        .padding(.leading, 8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Contribution from \(name)")
+                .accessibilityValue(contribution.formatted(currencyCode: currencyCode))
+            }
         }
-        .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityHint("Marks this person as the one who paid")
+        .accessibilityHint("Marks this person as one of those who paid")
         // The same person is now a row in both sections of this form, so a UI
         // test reaching for them by name has two candidates and takes whichever
         // the tree walks into first. An identifier is invisible to VoiceOver —

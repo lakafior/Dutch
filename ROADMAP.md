@@ -86,7 +86,7 @@ recorded.
 | — | Shipped | [Archive a group](#archive-a-group) | Finished trips fold into one collapsed row instead of sitting in the list forever. | An optional `archivedDate` on `ExpenseGroup` and a split of the same unfiltered fetch. | Archived groups still count against the free limit, deliberately |
 | 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
 | 12 | Shipped | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | Cent-weights in the weighting that already existed — no model version, no promote, and an older build divides it correctly rather than falling back. | A tip is no longer separable from the items once saved; it reopens folded in |
-| 16 | Not started | [Several people paid](#16-several-people-paid) | Many payers on one expense, not one. | Reaches `paidBy` in the model *and* `payer: Participant.ID` in the calculator. The workaround — one expense per payer — is exactly correct, so this buys tidiness, not capability. | Model change **and** the calculator contract; sits behind **12** |
+| 16 | Shipped | [Several people paid](#16-several-people-paid) | Several payers on one trip through the form, saved as one ordinary expense each. | The workaround being exactly correct is what made it cheap: the app performs it. No model change, no calculator change, nothing new for an old build to miss. | Buys entry convenience, not a tidier log — you still get one row per payer |
 | 19 | Not started | [Prefill the title from where you are](#19-prefill-the-title-from-where-you-are) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalSearch`; MapKit is system. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
 | 20 | Not started | [Prefill the currency from the country you are in](#20-prefill-the-currency-from-the-country-you-are-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, the mapping is already in Foundation. The trap is carrying the previous country's *rate* across. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
 | 21 | Not started | [Location on an expense](#21-location-on-an-expense) | Latitude, longitude and the chosen name, stored on the expense. | Group the log by place — a charts screen is in **Not planned** for a reason that applies here unchanged. | Model change (pair with **12**/**16**); a shared location doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
@@ -1045,11 +1045,70 @@ It is also the symmetric end state. An expense today has one payer and many
 sharers; there is no principled reason the paying side is the singular one, and
 "we split the taxi and two of us put money in" is an ordinary sentence.
 
-What holds it back is that the workaround is not a workaround — it is exactly
-correct. Two expenses, one per payer, produce identical balances, and the app
-already makes the second one cheap through **Duplicate**. So this buys tidiness
-in the expense log rather than a capability, which puts it behind **12**, whose
-per-person amount control is the same shape of UI on the other side of the bill.
+What held it back was that the workaround is not a workaround — it is exactly
+correct. Two expenses, one per payer, produce identical balances.
+
+**That turned out to be the reason to build it, not to skip it.** If two records
+are exactly right, the app writes the two records and the form stops being a
+place you visit twice. `GroupStore.addExpenses` decomposes at entry and nothing
+downstream changes: `paidBy` is still to-one, `ExpenseEntry.payer` is still
+`Participant.ID`, and `SettlementCalculator` — "the one contract every balance
+in the app is computed through", which this entry named as the risk — was not
+touched.
+
+The decisive argument is one this entry missed. Payer information stored
+anywhere *new* is invisible to a build that predates it, **a new Core Data
+attribute included**. Under the to-many plan a member who hasn't updated credits
+the whole amount to one person and quietly computes different balances from
+everybody else in the group — the one failure this app cannot take. Decomposed,
+there is nothing new to miss: every build at every version sees the same two
+ordinary expenses.
+
+`ExactSplit` from **12** does the arithmetic unchanged; contributions are fixed
+figures against the tipped total, and a payer left blank takes an equal part of
+what the others don't cover. It is the same control on the other side of the
+bill, exactly as this entry predicted — it just turned out that **12** had
+already paid for it.
+
+**Available on an edit too, and deliberately behind a toggle.** This was
+add-only at first, on the reasoning that an edit rewrites one record and has
+nowhere to put a second payer without silently creating a row. Two things
+answered that: the row is not silent — the footer names it before Save — and it
+can be dated correctly, which is only true because **Choose the date on an
+expense** shipped first. Without that field, a payer added to last Tuesday's
+taxi would have landed in today's bucket.
+
+Editing is also where the need actually arises. The taxi is already in the log
+when somebody remembers they chipped in, and the alternative was deleting the
+expense and entering two — on a shared group, precisely the delete-and-re-add
+churn that **Edit an expense** exists to prevent. The edited record keeps its
+identity and shrinks to its payer's part; the others arrive as new rows on the
+same date.
+
+The sibling records are not linked, so an edit only ever describes how *this*
+record divides. Reopening it afterwards shows one payer and the reduced figure,
+with the other row standing on its own in the log. That is the honest reading of
+a model with no multi-payer expense in it, and it is the trade that keeps this
+free of the grouping marker.
+
+The toggle is the more easily lost decision. Multi-select-by-default made
+*correcting* the payer — far and away the commoner action — cost two taps: pick
+the right person, then unpick the wrong one. So a tap replaces, as it always
+did, and **Several people paid** at the foot of the section is what changes what
+the rows mean. That is the same shape as `Uneven split` one section below, on
+the principle that a rare mode must never tax the tap everybody makes.
+
+**What it does not buy is the tidiness this entry led with.** Two people paying
+for one taxi is still two rows in the log. The saving is the typing — one pass
+through the form instead of an add, a Duplicate and two corrections, at a taxi
+rank. If a single collapsed row is ever the actual request, that is a different
+feature and it needs the grouping marker this one deliberately avoids.
+
+One artifact worth knowing: splitting 50 once is not bit-identical to splitting
+30 and 20 separately, because each record rounds independently. Every record
+sums exactly and every device agrees, so the group always reconciles — an
+individual's share can just sit a minor unit from what a single record would
+have given them.
 
 ---
 

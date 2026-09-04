@@ -209,6 +209,113 @@ struct GroupStore {
         try context.save()
     }
 
+    /// Records one real-world payment that more than one person put money into,
+    /// as one ordinary expense per payer.
+    ///
+    /// **There is no such thing as a multi-payer expense in this model, and
+    /// this does not create one.** Two expenses — one per payer, same sharers,
+    /// same weighting — produce balances identical to a single expense with two
+    /// payers, so the app writes the two rather than growing a concept. What
+    /// this saves is the typing: the alternative is an add, a Duplicate and two
+    /// corrections, at a taxi rank.
+    ///
+    /// That choice is what keeps the feature free of a model version, a
+    /// CloudKit promote and any change to `SettlementCalculator` — and, more to
+    /// the point, free of a disagreement. Payer information stored anywhere new
+    /// is invisible to a build that predates it, including in a new attribute,
+    /// so a member who hasn't updated would credit the whole amount to one
+    /// person and quietly compute different balances from everyone else. Here
+    /// there is nothing new to miss: every build, at every version, sees the
+    /// same two ordinary expenses.
+    ///
+    /// - Parameters:
+    ///   - amount: the whole payment, in the group's currency.
+    ///   - contributions: what each payer put in, as relative weights — the
+    ///     form passes cents. Split with `Money.split(among:)`, so the records
+    ///     sum to exactly `amount` however the division falls.
+    ///   - foreign: provenance, divided by the same weights so each record
+    ///     carries the part of the original figure it accounts for. Its
+    ///     conversion can land a minor unit from that record's `amount`, which
+    ///     is why nothing reads it back to compute anything — see
+    ///     `Expense.foreignAmount`.
+    ///
+    /// One `save()` for the whole set, deliberately. Saving per record would
+    /// export each separately and arrive on everyone else's phone as two
+    /// notifications about one taxi.
+    func addExpenses(
+        title: String,
+        amount: Money,
+        contributions: [Person: Int],
+        splitAmong participants: Set<Person>,
+        in group: ExpenseGroup,
+        category: ExpenseCategory? = nil,
+        on date: Date = Date(),
+        paidIn foreign: ForeignAmount? = nil,
+        shares: [UUID: Int]? = nil,
+        exactShares: Set<UUID> = []
+    ) throws {
+        // Ordered by id so the division is the same on every device, for the
+        // reason `SettlementCalculator.slices` sorts: whoever the leftover cent
+        // lands on has to be decided by the data and not by set iteration.
+        let payers = contributions
+            .filter { $0.value > 0 }
+            .sorted { ($0.key.id?.uuidString ?? "") < ($1.key.id?.uuidString ?? "") }
+
+        guard payers.count > 1 else {
+            // One payer is an ordinary expense, and routing it through here
+            // would make a second way to write the commonest record there is.
+            guard let only = payers.first?.key else { return }
+            try addExpense(
+                title: title, amount: amount, paidBy: only,
+                splitAmong: participants, in: group, category: category,
+                on: date, paidIn: foreign, shares: shares, exactShares: exactShares
+            )
+            return
+        }
+
+        let weights = payers.map(\.value)
+        let amounts = amount.split(among: weights)
+        // `split(among:)` returns `[]` for a weighting it refuses; falling back
+        // to the whole figure on each record would multiply the expense by the
+        // number of payers, so this bails instead.
+        guard amounts.count == payers.count else { return }
+
+        let foreignAmounts = foreign.flatMap { original -> [Money]? in
+            let parts = Money(amount: original.amount).split(among: weights)
+            return parts.count == payers.count ? parts : nil
+        }
+
+        for (index, payer) in payers.enumerated() {
+            let expense = Expense(context: context)
+            expense.id = UUID()
+            expense.date = date
+            expense.group = group
+
+            apply(
+                title: title,
+                amount: amounts[index],
+                paidBy: payer.key,
+                splitAmong: participants,
+                category: category,
+                // Failable, and the original stands in when it refuses: a
+                // provenance figure that won't construct must not take the
+                // record's real amount down with it.
+                foreign: foreign.map { original in
+                    ForeignAmount(
+                        amount: foreignAmounts?[index].amount ?? original.amount,
+                        currencyCode: original.currencyCode,
+                        rate: original.rate
+                    ) ?? original
+                },
+                shares: shares,
+                exactShares: exactShares,
+                to: expense
+            )
+        }
+
+        try context.save()
+    }
+
     /// Rewrites an existing expense in place.
     ///
     /// The alternative — delete and re-add — is what the UI used to force, and
@@ -295,6 +402,109 @@ struct GroupStore {
         payment.amount = amount.amount
         payment.paidBy = payer
         payment.splitAmong = NSSet(object: recipient)
+
+        try context.save()
+    }
+
+    /// Rewrites an expense and, where more than one person turns out to have
+    /// paid, adds a record for each of the others.
+    ///
+    /// The record in front of the user keeps its identity and takes one payer's
+    /// share; the rest become new expenses carrying the same date, title,
+    /// sharers and weighting. Balances land where a single payment with several
+    /// payers would have put them, by the same decomposition `addExpenses`
+    /// uses — see there for why nothing about this needs a model change.
+    ///
+    /// **This is the one place in the app where saving an edit creates rows.**
+    /// It is allowed because the alternative is worse: without it, remembering
+    /// that somebody else chipped in means deleting the expense and entering
+    /// two, which on a shared group is exactly the delete-and-re-add churn that
+    /// editing exists to prevent. The form says what will happen before Save
+    /// rather than letting it be discovered in the log — that sentence is the
+    /// price of admission, not a nicety.
+    ///
+    /// New records date from the expense being edited, not from today. That is
+    /// only possible because the date is a field the form carries: before it
+    /// was, a payer added to last Tuesday's taxi would have landed in today's
+    /// bucket, which is the filing error the picker exists to prevent.
+    ///
+    /// - Parameter contributions: what each payer put in, as relative weights.
+    ///   One entry leaves this an ordinary edit and creates nothing.
+    func update(
+        _ expense: Expense,
+        title: String,
+        amount: Money,
+        contributions: [Person: Int],
+        splitAmong participants: Set<Person>,
+        category: ExpenseCategory? = nil,
+        on date: Date? = nil,
+        paidIn foreign: ForeignAmount? = nil,
+        shares: [UUID: Int]? = nil,
+        exactShares: Set<UUID> = []
+    ) throws {
+        let payers = contributions
+            .filter { $0.value > 0 }
+            .sorted { ($0.key.id?.uuidString ?? "") < ($1.key.id?.uuidString ?? "") }
+
+        guard payers.count > 1 else {
+            guard let only = payers.first?.key else { return }
+            try update(
+                expense, title: title, amount: amount, paidBy: only,
+                splitAmong: participants, category: category, on: date,
+                paidIn: foreign, shares: shares, exactShares: exactShares
+            )
+            return
+        }
+
+        let weights = payers.map(\.value)
+        let amounts = amount.split(among: weights)
+        guard amounts.count == payers.count else { return }
+
+        let foreignAmounts = foreign.flatMap { original -> [Money]? in
+            let parts = Money(amount: original.amount).split(among: weights)
+            return parts.count == payers.count ? parts : nil
+        }
+
+        // The edited record keeps whoever it already named, so the row the user
+        // is looking at stays theirs and the *new* rows are the ones that
+        // appear. Repointed only if that person is no longer paying at all,
+        // where leaving it would contradict the form.
+        let keeps = payers.firstIndex { $0.key == expense.paidBy } ?? 0
+
+        if let date { expense.date = date }
+        // Whatever the edited record is dated, the new ones match it. `date` is
+        // nil when the picker was untouched, which is the ordinary case.
+        let stamp = expense.date ?? date ?? Date()
+
+        for (index, payer) in payers.enumerated() {
+            let target: Expense
+            if index == keeps {
+                target = expense
+            } else {
+                target = Expense(context: context)
+                target.id = UUID()
+                target.date = stamp
+                target.group = expense.group
+            }
+
+            apply(
+                title: title,
+                amount: amounts[index],
+                paidBy: payer.key,
+                splitAmong: participants,
+                category: category,
+                foreign: foreign.map { original in
+                    ForeignAmount(
+                        amount: foreignAmounts?[index].amount ?? original.amount,
+                        currencyCode: original.currencyCode,
+                        rate: original.rate
+                    ) ?? original
+                },
+                shares: shares,
+                exactShares: exactShares,
+                to: target
+            )
+        }
 
         try context.save()
     }
