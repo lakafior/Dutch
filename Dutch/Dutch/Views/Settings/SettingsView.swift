@@ -13,14 +13,17 @@ import UserNotifications
 /// every choice this app offers belongs to the group and syncs with it — the
 /// name, the icon, the currency, who is who — so it is edited where the group
 /// is, not in a list of preferences one screen removed from the thing it
-/// changes. What is left is the two things that genuinely have nowhere else to
-/// live: a device-wide notification switch, and the legal and provenance links
-/// that App Review, the App Store listing, and an MPL-licensed source tree all
-/// expect to be reachable from inside the app.
+/// changes. What is left is what genuinely has nowhere else to live: the
+/// device-wide switches in front of the two things the app can only do by
+/// asking iOS for permission first — notifications, and reading where you are —
+/// and the legal and provenance links that App Review, the App Store listing,
+/// and an MPL-licensed source tree all expect to be reachable from inside the
+/// app.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject private var notifier = ExpenseNotifier.shared
+    @ObservedObject private var nearby = NearbyPlaces.shared
     @ObservedObject private var purchases = PurchaseStore.shared
 
     /// Mirrors the notifier rather than binding straight to it: turning this on
@@ -28,6 +31,20 @@ struct SettingsView: View {
     /// real answer would flick on and then visibly back off. This one is the
     /// switch's own position, reconciled once the system has answered.
     @State private var wantsNotifications = false
+
+    /// The same mirroring, for the same reason: `enable()` ends in a system
+    /// prompt that can come back refused, and a switch bound to the answer
+    /// would flick on and visibly back off.
+    @State private var wantsNearby = false
+
+    /// Bound straight to the key like `reopensLastGroup` below, because this
+    /// one asks nothing of the system — it only decides what to do with a
+    /// country the user already handed over by picking a place.
+    @AppStorage(
+        ExpenseDefaults.currencyFromLocationKey,
+        store: PersistenceController.appGroupDefaults
+    )
+    private var prefillsCurrency = false
 
     /// Bound straight to the key, unlike `wantsNotifications` above: there is no
     /// permission to ask for and nothing that can refuse, so the switch's
@@ -40,6 +57,7 @@ struct SettingsView: View {
     private var reopensLastGroup = false
 
     @State private var isRequesting = false
+    @State private var isRequestingLocation = false
     @State private var restoreMessage: String?
 
     var body: some View {
@@ -49,6 +67,9 @@ struct SettingsView: View {
                     notifications
                 }
                 launch
+                if nearby.isAvailable {
+                    location
+                }
                 unlimited
                 about
             }
@@ -62,9 +83,19 @@ struct SettingsView: View {
             .task {
                 await notifier.refreshAuthorization()
                 wantsNotifications = notifier.isEnabled
+
+                // Synchronous, unlike the notification one: CoreLocation
+                // answers from a property rather than an `await`, and the
+                // status it reports has already been kept current by the
+                // delegate.
+                nearby.refreshAuthorization()
+                wantsNearby = nearby.isEnabled
             }
             .onChange(of: notifier.isEnabled) { _, enabled in
                 wantsNotifications = enabled
+            }
+            .onChange(of: nearby.isEnabled) { _, enabled in
+                wantsNearby = enabled
             }
             .alert(
                 "Restore Purchases",
@@ -155,6 +186,73 @@ struct SettingsView: View {
             Text(.launch)
         } footer: {
             Text(.reopenLastGroupExplanation)
+        }
+    }
+
+    // MARK: - Location
+
+    /// Both switches default off, and the second one cannot be reached until
+    /// the first is on.
+    ///
+    /// They are separate because they are separate consents. **Nearby Places**
+    /// is a button the user taps, and everything that follows from it is
+    /// visible on screen at the moment it happens. Prefilling the currency is
+    /// the app acting on the same information without being asked a second
+    /// time, and somebody can reasonably want the café's name in the title
+    /// while wanting to choose their own currency.
+    private var location: some View {
+        Section {
+            Toggle("Nearby Places", isOn: $wantsNearby)
+                .disabled(isRequestingLocation || nearby.authorization == .denied)
+                .onChange(of: wantsNearby) { _, wanted in
+                    Task { await applyNearby(wanted) }
+                }
+
+            Toggle("Currency from Location", isOn: $prefillsCurrency)
+                // Not merely dimmed: with Nearby off there is no place to take a
+                // country from, so this would be a switch that changes nothing.
+                .disabled(!nearby.isOffered)
+
+            if nearby.authorization == .denied {
+                // The same dead end notifications have, and the same way out.
+                Link(destination: URL(string: UIApplication.openSettingsURLString)!) {
+                    Label("Open Location Settings", systemImage: "arrow.up.forward.app")
+                }
+            }
+        } header: {
+            Text(.location)
+        } footer: {
+            Text(locationFooter)
+        }
+    }
+
+    /// Says what is read, when, and — the part that matters on a screen about
+    /// location — what is not.
+    ///
+    /// Dutch takes one reading at the moment the button is tapped and nothing
+    /// else: no background mode, no monitoring, nothing kept unless a place is
+    /// actually chosen. Saying so here is cheaper than the alternative, which is
+    /// somebody reading "Location" in a bill-splitting app's settings and
+    /// assuming the worse version.
+    private var locationFooter: String {
+        switch nearby.authorization {
+        case .denied, .restricted:
+            return String(localized: .locationDeniedExplanation)
+        default:
+            return String(localized: .locationExplanation)
+        }
+    }
+
+    private func applyNearby(_ wanted: Bool) async {
+        guard wanted != nearby.isEnabled else { return }
+
+        if wanted {
+            isRequestingLocation = true
+            let granted = await nearby.enable()
+            isRequestingLocation = false
+            wantsNearby = granted
+        } else {
+            nearby.disable()
         }
     }
 

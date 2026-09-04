@@ -87,9 +87,9 @@ recorded.
 | 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
 | 12 | Shipped | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | Cent-weights in the weighting that already existed — no model version, no promote, and an older build divides it correctly rather than falling back. | A tip is no longer separable from the items once saved; it reopens folded in |
 | 16 | Shipped | [Several people paid](#16-several-people-paid) | Several payers on one trip through the form, saved as one ordinary expense each. | The workaround being exactly correct is what made it cheap: the app performs it. No model change, no calculator change, nothing new for an old build to miss. | Buys entry convenience, not a tidier log — you still get one row per payer |
-| 19 | Not started | [Prefill the title from where you are](#19-prefill-the-title-from-where-you-are) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalSearch`; MapKit is system. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
-| 20 | Not started | [Prefill the currency from the country you are in](#20-prefill-the-currency-from-the-country-you-are-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, the mapping is already in Foundation. The trap is carrying the previous country's *rate* across. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
-| 21 | Not started | [Location on an expense](#21-location-on-an-expense) | Latitude, longitude and the chosen name, stored on the expense. | Group the log by place — a charts screen is in **Not planned** for a reason that applies here unchanged. | Model change (pair with **12**/**16**); a shared location doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
+| 19 | Not started | [The Nearby button](#19-the-nearby-button) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalPointsOfInterestRequest`, not `MKLocalSearch.Request` — the latter searches for text. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
+| 20 | Not started | [The currency, from the country the chosen place is in](#20-the-currency-from-the-country-the-chosen-place-is-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, and the country comes free from the picked `MKMapItem`, so no `CLGeocoder`. The trap is carrying the previous country's *rate* across; `onChange(of: currencyCode)` already handles it, so let it run. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
+| 21 | Not started | [The place on the expense](#21-the-place-on-the-expense) | The chosen name, stored on the expense — one optional `String`, not a coordinate pair. | Group the log by place; a charts screen is in **Not planned** for a reason that applies here unchanged, and a field promoted to the Production schema can never be removed. | Dutch 8 and a promote of its own — **12** and **16** shipped without a model version, so there is nothing left to pair with. A shared place doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label and privacy-page line |
 | 22 | Not started | [iPad and Mac](#22-ipad-and-mac) | "Designed for iPad" is a checkbox; native iPad, Catalyst and macOS are real work. | Sync needs nothing — CloudKit is per Apple Account. Two things bite: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | 432 KB for native iPad, being a saving already taken |
 | 24 | Not started | [An iMessage app](#24-an-imessage-app) | Assign a group to a group chat and manage its expenses inside Messages. | A target in this bundle, not a second app. The app group and `Intents/` already pay for most of it. May be worth more as a fix for the QR join dead-end than as a way to enter expenses. | App size — a second binary, plausibly past 2 MB with the widget. And whether an extension's writes export before the host app next launches is unverified |
 | 14 | Shipped | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | Measured: green failed at 2.22:1 on white, well under the 3:1 it needed. Light appearance now uses Apple's high-contrast pair. | Measured on both grounds the amount appears over. `Standing.tint` only — dark appearance already passed and was left alone. | Listing still doesn't claim it; that's metadata, not a build |
@@ -1121,11 +1121,37 @@ country-to-currency mapping is already sitting in Foundation. The fourth costs
 432 KB, inside a budget with well over a megabyte of headroom.
 
 What actually gates them is a permission prompt, a network round trip, a model
-version and some layout work. So they are here rather than in **Next**: each has
-exactly one decision standing in front of it, and none of the decisions is about
-bytes.
+version and some layout work. So they are here rather than in **Next**, and none
+of the decisions is about bytes. The first three turned out not to be three
+decisions either — they share a single tap, and are written up below as one
+batch rather than as three entries that would each have to answer the same
+permission question separately.
 
-### 19. Prefill the title from where you are
+### 19–21. Nearby: one tap, three consequences
+
+**Written on 2026-09-04, and not yet true in Production.** All three are
+implemented and the app builds, but `Dutch 8` has had neither the CloudKit
+initialize nor the promote, and nothing has run on a device — so the entries
+below still read as a plan rather than as shipped. What is left is in
+*Dutch 8, and the order it has to happen in*, and the two-build check under
+*Fallback for peers on an older build*.
+
+These three were written up separately, and the separation was the mistake.
+They are not three features with three permission stories and three switches.
+They are **one tap — Nearby — with three consequences**, and the tap is the
+consent event that makes all three acceptable:
+
+- **19** is the tap: the cafés and restaurants within a hundred metres, one of
+  them chosen, its name in the title.
+- **20** rides on the *result* of that tap, not on a second reading of the
+  user's location.
+- **21** is what is kept from the same result.
+
+So there is one location service, one permission prompt, one Settings section,
+and a user who never taps **Nearby** never has a location read, never has a
+currency changed under them, and never syncs a place to anybody.
+
+#### 19. The Nearby button
 
 Asked for as: an empty title becomes the current location, and better still, a
 picker of the establishments nearby.
@@ -1135,8 +1161,14 @@ Reverse-geocoding to *Kraków* and dropping it in the title is close to
 worthless — the group is already called *Kraków Trip*, and every expense in it
 would carry the same word. The valuable half is the second one: the cafés and
 restaurants within a hundred metres, one tap, and the title reads *Café Camelot*.
-`MKLocalSearch` with a point-of-interest filter is how, and MapKit is system, so
-it costs nothing in the bundle.
+MapKit is system, so it costs nothing in the bundle.
+
+**The API is `MKLocalPointsOfInterestRequest(center:radius:)`, not
+`MKLocalSearch.Request`.** The latter searches for text and needs a query
+string; this one browses what is there, takes an `MKPointOfInterestFilter`, and
+is passed to `MKLocalSearch` the same way. Getting this wrong means inventing a
+query — *"restaurant"* — and getting the results for places with that word in
+the name.
 
 Three things stand in front of it:
 
@@ -1158,13 +1190,27 @@ Three things stand in front of it:
 So the shape is a **Nearby button, not a prefill** — which resolves the first
 objection and the third at once.
 
-*Cost: zero bytes; MapKit is system. One `INFOPLIST_KEY_NSLocationWhenInUseUsageDescription`
-— a scalar key, so unlike `UIBackgroundModes` it can live in a build setting —
-one button and one sheet. No model change.*
+The service is `ExpenseNotifier` again, in a different framework. That type is
+the codebase's worked example of a permission-gated feature: `@MainActor`,
+`ObservableObject`, a published `authorization`, an `enable()` that can come back
+refused, and a `SettingsView` toggle mirrored in `@State` so a refusal doesn't
+leave a switch sitting on above a feature that cannot fire — plus the
+`openSettingsURLString` link for `.denied`, which is the only route back after
+iOS has asked once. Copy that shape rather than inventing a second one.
 
-### 20. Prefill the currency from the country you are in
+Prefer an explicit `CLLocationManager` — `requestWhenInUseAuthorization()`, then
+a one-shot `requestLocation()` — over the iOS 17 `CLLocationUpdate` sequence.
+Not because the newer API is worse, but because the prompt has to be a step the
+button owns, so the button can show what happened when the answer was no.
 
-The cheapest of the four, and the one whose payoff is clearest. The app already
+*Cost: zero bytes; MapKit and CoreLocation are system. One
+`INFOPLIST_KEY_NSLocationWhenInUseUsageDescription` — a scalar key, so unlike
+`UIBackgroundModes` it can live in a build setting — one button and one sheet.
+No model change.*
+
+#### 20. The currency, from the country the chosen place is in
+
+The cheapest of the three, and the one whose payoff is clearest. The app already
 thinks about the traveller: `ExpenseDefaults` keeps the last currency per group
 and the last rate per group *per currency*, precisely so a trip through three
 countries doesn't overwrite one rate with the next.
@@ -1173,64 +1219,170 @@ countries doesn't overwrite one rate with the next.
 returns `PLN`, out of the ICU data already in the OS — verified for PL, NL, JP,
 GB, CH, HU and CZ. That matters because an embedded currency database is one of
 the four things named at the top of this file as an actual size risk, and this
-isn't one.
+isn't one. It is also Foundation-only and testable without a simulator, so by
+the rule in `CLAUDE.md` it belongs in **DutchKit**, with those seven cases and
+the `nil` one for a region ICU has no currency for.
 
-What it does need is the country, and there are only two places to get it.
-`Locale.current.region` is the device's *region setting*, not where the device
-is, which is wrong for exactly the person this feature is for. The other is
-CoreLocation — a permission prompt, for a prefill.
+What it needs is the country, and this entry used to name two places to get it
+and reject both: `Locale.current.region` is the device's *region setting*, not
+where the device is, which is wrong for exactly the person this feature is for;
+and CoreLocation means a permission prompt for a prefill.
 
-So this one rides on **19**. If location is already granted for Nearby, the
-currency prefill is free; if it isn't, there is nothing honest to prefill from.
-A setting, defaulted off, matching notifications and **Open the last group
-on launch** above: the app does not
-start reading the user's location until asked.
+**There is a third, and it is free.** The `MKMapItem` the user picked in **19**
+carries `placemark.isoCountryCode`. No `CLGeocoder`, no second network round
+trip — reverse geocoding is both, and rate-limited besides — and no second
+consent question, because the country comes from a place the user chose out
+loud. If they didn't tap **Nearby**, there is nothing to prefill from, which is
+the honest answer rather than a missing feature.
 
-The trap is the rate, not the currency. Switching the code must not carry the
-previous country's rate across — `onChange(of: currencyCode)` already looks up
-`ExpenseDefaults.lastRate` per currency and leaves the field empty when there
-isn't one, and an automatic switch has to keep that behaviour. Otherwise the
-first expense in a new country is converted at the last country's rate, which is
-wrong and looks entirely plausible.
+**The trap is the rate, not the currency**, and the code already handles it:
+`onChange(of: currencyCode)` in `ExpenseFormView` replaces `rateText` with
+whatever `ExpenseDefaults.lastRate` holds for the new code, and leaves it empty
+when there isn't one. So the automatic switch must set `currencyCode` and *let
+that handler run*. Anything that assigns the rate itself reintroduces precisely
+the bug: the first expense in a new country converted at the last country's
+rate, which is wrong and looks entirely plausible.
 
-*Cost: zero bytes. A `UserDefaults` key and a `Toggle`. No model change.*
+The other guard is `isEditing`. Reopening an expense saved in Budapest must
+never rewrite the currency it was saved in because the phone is now in Kraków.
 
-### 21. Location on an expense
+*Cost: zero bytes. A `UserDefaults` key, a `Toggle`, and a small `Sendable` type
+in DutchKit. No model change.*
 
-Three optional attributes on `Expense` — latitude, longitude, and the name that
-was chosen — so that "how much did we spend at which place" can be answered
-later.
+#### 21. The place on the expense
 
-**Do it in the same model version as 12 and 16.** Those two are already paired
-above for the reason that a new attribute means running the CloudKit
-initialize-and-promote dance, and that is the step that gets missed. This makes
-three attributes in one version 8, not three versions — Dutch 7 having
-already spent its promote on categories, avatars and the archive.
+The name that was chosen, stored on the `Expense`, so that "how much did we
+spend at which place" can be answered later.
 
-Two decisions come first, and neither is technical:
+**One optional `String` — `placeName` — and not latitude and longitude.** This
+entry used to ask for all three, and to say the model version should be shared
+with **12** and **16**. Both halves are now void:
 
-- **A location on a shared expense is a location shared with the group,
-  permanently.** Everything the app syncs today is who, what, how much and when;
-  *where* is a different category of fact about a person, it goes into the
-  shared zone, and it does not come back out. That makes it acceptable only as a
-  consequence of the user tapping **Nearby** in **19** — per expense, visible at
-  the moment it is attached, never automatic and never collected in the
-  background.
-- **The overview it is for is the weaker half of the request.** A spending
-  breakdown by place is a charts screen, and *A charts tab* sits in **Not
-  planned** below for a reason that applies here unchanged: nobody opens it
-  twice for a group with eleven expenses in it. Grouping the expense list by
-  place — the same trick **Categories** uses — is the version that
-  survives contact with a real group.
+- **12 and 16 shipped without touching the schema.** Exact amounts became cent
+  weights in the weighting that already existed; several payers became several
+  ordinary `Expense` rows, decomposed at entry in `GroupStore`. So there is no
+  version to share and Dutch 8 is location-only, which removes the economy this
+  entry was counting on and turns "three attributes for the price of one
+  promote" back into a real question.
+- **A field promoted to the Production CloudKit schema can never be removed.**
+  That is the argument that settles it. Nothing in the app has a use for
+  coordinates: the overview they would serve is a charts screen, and *A charts
+  tab* is in **Not planned** below for a reason that applies here unchanged —
+  nobody opens it twice for a group with eleven expenses in it. Grouping the
+  expense list by place, the same trick **Categories** uses, needs the name
+  alone. Permanent speculative schema is a worse trade than a second model
+  version, which this project has now done seven times and has a written
+  procedure for.
+
+The privacy question survives the trim and is easier to answer for a name than
+for a coordinate pair: **a place on a shared expense is a place shared with the
+group, permanently.** Everything the app syncs today is who, what, how much and
+when; *where* is a different category of fact about a person, it goes into the
+shared zone, and it does not come back out. That makes it acceptable only as a
+consequence of the tap in **19** — per expense, visible at the moment it is
+attached, never automatic and never collected in the background.
 
 On the privacy page: nothing here becomes collected data, because there is still
-no server and no analytics. But the App Store nutrition label and
-`website/privacy/` would both need a line, and the README's *no trackers* stays
-true only so long as this remains opt-in and stays out of any background
-location mode.
+no server and no analytics, and CoreLocation is not a required-reason API, so no
+`PrivacyInfo.xcprivacy` appears in a tree that has none today. What does need a
+line is the App Store nutrition label and `website/privacy/`. The README's *no
+trackers* stays true only so long as this remains opt-in and stays out of any
+background location mode.
 
-*Cost: zero bytes. Three optional attributes, one model version, one CloudKit
+*Cost: zero bytes. One optional attribute, one model version, one CloudKit
 initialize-and-promote.*
+
+#### Dutch 8, and the order it has to happen in
+
+The order is the reverse of the one that feels natural, and this is the step
+that gets missed:
+
+1. Add `Dutch 8.xcdatamodel` with `placeName` optional, bump `.xccurrentversion`.
+2. Run once in Xcode signed in to iCloud with `-initialize-cloudkit-schema`.
+   Skipping this on the theory that mirroring creates fields lazily is the
+   documented trap: it does, but only as records populating them actually sync,
+   so the console reports "0 changes to deploy" and everything looks fine.
+3. **Promote to Production, then ship.** The schema is server-side, so it can
+   land before the binary does. Shipping first produces
+   `Cannot create or modify field 'CD_placeName' in record 'CD_Expense' in
+   production schema`, which aborts mirroring entirely and takes sharing down
+   with it — a bug visible only in a distributed build.
+
+#### Fallback for peers on an older build
+
+Three cases, and only the third is genuinely open:
+
+- **Old store, new app.** Lightweight migration, attribute optional, existing
+  rows read unchanged. This is what the model versioning already covers.
+- **Old app, new record arriving over CloudKit.** The Production schema is
+  additive; a Dutch 7 client's mirroring ignores `CD_placeName` and shows the
+  expense without a place. The degradation is invisible in the right way — no
+  empty row, no placeholder, nothing to explain.
+- **Old app *editing* that expense.** Mirroring exports the properties that
+  changed, so the unknown field ought to survive — but "ought to" is doing the
+  work in that sentence, and the failure would be a friend who hasn't updated
+  silently erasing a place. Two builds side by side on one shared group, one on
+  Dutch 7, is a ten-minute check and the only way to know. **Do it before the
+  promote, not after.**
+
+Downgrading — a Dutch 8 store opened by a Dutch 7 binary — hits the `fatalError`
+in `loadPersistentStores`. That is a TestFlight-rollback concern rather than an
+App Store one, but it is worth knowing before rolling one back.
+
+#### Settings, and what defaults to off
+
+One **Location** section, below **Launch**, two switches, both off by default —
+`store.bool(forKey:)` on a never-written key gives that for free, the same way
+`reopenLastGroup` does:
+
+- **Nearby Places.** Gates the button existing at all, and with it everything in
+  **19** and **21**.
+- **Currency from Location.** `.disabled` unless the first is on. Separate,
+  because wanting the name is not the same as wanting the currency changed
+  underneath you, and **20** is the one of the three that acts without being
+  asked a second time.
+
+The two keys live in different places, and the split follows the one that
+already exists: **Currency from Location** is an `ExpenseDefaults` key bound by
+`@AppStorage`, exactly like `reopenLastGroupKey`, because the switch's position
+*is* the setting. **Nearby Places** is owned by `NearbyPlaces` and mirrored into
+`@State`, exactly like `ExpenseNotifier`'s, because turning it on ends in a
+system prompt that can say no and a switch bound to the answer would flick on
+and visibly back off. Both write to the app-group suite.
+
+#### Sequencing
+
+Three commits on one branch, each shippable alone:
+
+1. The location service, the Settings section, and the permission string.
+   **Nearby** fills the title. That is **19**, complete, with no schema and no
+   CloudKit anywhere near it.
+2. The currency from the picked place's `isoCountryCode`, plus the DutchKit type
+   and its tests. That is **20**, pure form logic.
+3. Dutch 8, `placeName`, and showing the place on the row. That is **21**, and
+   it is the only one carrying the initialize-and-promote.
+
+   Written as a label rather than as grouping, which this entry originally
+   called for. A pick writes the title *and* the place, so on the ordinary row
+   the two are the same string and the place is not drawn at all — it appears on
+   the payer's line only once somebody renames the expense. Grouping needs a
+   second answer first: the log is already grouped by day, and a second axis
+   over the same list is a control, not an attribute. Left open deliberately.
+
+Two mechanical notes that are easy to lose, both from the **Localization**
+section below:
+
+- `INFOPLIST_KEY_NSLocationWhenInUseUsageDescription` has to be set on **both**
+  build configurations, and the English source mirrored into
+  `InfoPlist.xcstrings` with a Polish translation — exactly as
+  `NSCameraUsageDescription` already is. The build setting alone ships an
+  untranslated prompt.
+- `xcodebuild build` does not sync the string catalog. New literals need the
+  Xcode IDE or `-exportLocalizations`, or they silently never become keys.
+
+And measure the result by archiving, not building. MapKit and CoreLocation ship
+with the OS; what this batch costs is its own code, against the 1644 KB the top
+of this file records.
 
 ### 22. iPad and Mac
 

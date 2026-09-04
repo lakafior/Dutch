@@ -41,6 +41,23 @@
           }
         }
       }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Why the app asks for location. iOS shows this in the permission alert; the English source is INFOPLIST_KEY_NSLocationWhenInUseUsageDescription.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch reads where you are once, when you tap Nearby on an expense, to suggest the cafés and restaurants around you as its title."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch odczytuje Twoje położenie jednorazowo, gdy dotkniesz przycisku „W pobliżu” przy wydatku, aby zaproponować pobliskie kawiarnie i restauracje jako jego tytuł."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

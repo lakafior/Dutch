@@ -184,6 +184,7 @@ struct GroupStore {
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
         category: ExpenseCategory? = nil,
+        at place: String? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -200,6 +201,7 @@ struct GroupStore {
             paidBy: payer,
             splitAmong: participants,
             category: category,
+            place: place,
             foreign: foreign,
             shares: shares,
             exactShares: exactShares,
@@ -249,6 +251,7 @@ struct GroupStore {
         splitAmong participants: Set<Person>,
         in group: ExpenseGroup,
         category: ExpenseCategory? = nil,
+        at place: String? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -268,7 +271,8 @@ struct GroupStore {
             try addExpense(
                 title: title, amount: amount, paidBy: only,
                 splitAmong: participants, in: group, category: category,
-                on: date, paidIn: foreign, shares: shares, exactShares: exactShares
+                at: place, on: date, paidIn: foreign, shares: shares,
+                exactShares: exactShares
             )
             return
         }
@@ -297,6 +301,7 @@ struct GroupStore {
                 paidBy: payer.key,
                 splitAmong: participants,
                 category: category,
+                place: place,
                 // Failable, and the original stands in when it refuses: a
                 // provenance figure that won't construct must not take the
                 // record's real amount down with it.
@@ -346,6 +351,7 @@ struct GroupStore {
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         category: ExpenseCategory? = nil,
+        at place: String? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -359,6 +365,7 @@ struct GroupStore {
             paidBy: payer,
             splitAmong: participants,
             category: category,
+            place: place,
             foreign: foreign,
             shares: shares,
             exactShares: exactShares,
@@ -437,6 +444,7 @@ struct GroupStore {
         contributions: [Person: Int],
         splitAmong participants: Set<Person>,
         category: ExpenseCategory? = nil,
+        at place: String? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
         shares: [UUID: Int]? = nil,
@@ -450,8 +458,9 @@ struct GroupStore {
             guard let only = payers.first?.key else { return }
             try update(
                 expense, title: title, amount: amount, paidBy: only,
-                splitAmong: participants, category: category, on: date,
-                paidIn: foreign, shares: shares, exactShares: exactShares
+                splitAmong: participants, category: category, at: place,
+                on: date, paidIn: foreign, shares: shares,
+                exactShares: exactShares
             )
             return
         }
@@ -493,6 +502,7 @@ struct GroupStore {
                 paidBy: payer.key,
                 splitAmong: participants,
                 category: category,
+                place: place,
                 foreign: foreign.map { original in
                     ForeignAmount(
                         amount: foreignAmounts?[index].amount ?? original.amount,
@@ -518,6 +528,7 @@ struct GroupStore {
         paidBy payer: Person,
         splitAmong participants: Set<Person>,
         category: ExpenseCategory?,
+        place: String?,
         foreign: ForeignAmount?,
         shares: [UUID: Int]?,
         exactShares: Set<UUID>,
@@ -528,6 +539,14 @@ struct GroupStore {
         // below: an attribute only ever overwritten with a non-nil value is one
         // the user cannot take back.
         expense.category = category
+
+        // Written on both paths for the same reason, and this one has a second:
+        // a place is the only thing on an expense that says where a person
+        // physically was, so an edit that removes it has to actually remove it
+        // from the shared record. An attribute that can be set but not cleared
+        // would make that impossible without deleting the expense.
+        let placed = place?.trimmingCharacters(in: .whitespacesAndNewlines)
+        expense.placeName = (placed?.isEmpty ?? true) ? nil : placed
 
         // Stored as `nil` when blank rather than as `""`, because a title is
         // optional at the form and every screen already falls back on a

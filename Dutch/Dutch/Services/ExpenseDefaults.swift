@@ -262,6 +262,27 @@ enum ExpenseDefaults {
         store.bool(forKey: reopenLastGroupKey)
     }
 
+    // MARK: - Location
+
+    /// Whether picking a nearby place may also switch the expense's currency to
+    /// that country's.
+    ///
+    /// Here rather than on `NearbyPlaces`, which owns the switch next to it, for
+    /// the reason `reopenLastGroupKey` is here: `SettingsView` binds to this one
+    /// through `@AppStorage`, so the string has to be spelled exactly once. The
+    /// other switch is mirrored through a service instead, because it ends in a
+    /// system prompt that can say no.
+    ///
+    /// Defaulted off, and off is also what it means with **Nearby Places** off:
+    /// without a place there is no country, and `Locale.current.region` is the
+    /// device's region setting rather than where it is — which is wrong for
+    /// precisely the traveller this is for.
+    static let currencyFromLocationKey = "currencyFromLocation"
+
+    static var prefillsCurrencyFromLocation: Bool {
+        store.bool(forKey: currencyFromLocationKey)
+    }
+
     // MARK: - Cleanup
 
     /// Drops a deleted group's entries, so the keys don't accumulate for groups

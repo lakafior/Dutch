@@ -167,6 +167,21 @@ struct ExpenseFormView: View {
     @State private var errorMessage: String?
     @FocusState private var amountFocused: Bool
 
+    /// The nearby-places service, observed so the button appears and disappears
+    /// with the setting and with the system's answer — a form left open while
+    /// permission is revoked in Settings.app must not keep offering it.
+    @ObservedObject private var nearby = NearbyPlaces.shared
+    @State private var showingNearby = false
+
+    /// The place this expense was attached to, if one was picked.
+    ///
+    /// Kept separately from `title` even though a pick writes both, because the
+    /// two answer different questions the moment either is edited: the title is
+    /// what this expense is *called* — renameable to "Anna's birthday" — and
+    /// this is where it happened. Storing only the title would make the second
+    /// fact disappear the first time somebody rewords the first.
+    @State private var placeName: String?
+
     /// The foreign currencies this group has already spent in, newest first.
     ///
     /// Read once at construction rather than per render: the picker's option
@@ -201,6 +216,7 @@ struct ExpenseFormView: View {
         _date = State(initialValue: now)
         self.seedDate = now
         _category = State(initialValue: nil)
+        _placeName = State(initialValue: nil)
 
         // Mid-trip, the next expense is almost always in the same currency as
         // the last one, at the same rate. Entering ten Polish receipts should
@@ -273,6 +289,13 @@ struct ExpenseFormView: View {
         // where the date is the one field whose carried-over value would be
         // silently wrong.
         _category = State(initialValue: expense.category)
+
+        // Carried by an edit, and deliberately *not* by a duplicate. A place is
+        // a claim about where somebody physically was, and the second round —
+        // bought an hour later, possibly in the next bar — has not earned it.
+        // Everything else here is a prefill that costs a correction when it is
+        // wrong; this one would be a wrong fact, synced.
+        _placeName = State(initialValue: editing == nil ? nil : expense.placeName)
 
         // An expense with no stored weighting is an even split, and a uniform
         // weighting is stored as none at all — so the toggle starts on exactly
@@ -487,6 +510,9 @@ struct ExpenseFormView: View {
                 Text(.tipExplanation)
             }
             .errorBanner($errorMessage)
+            .sheet(isPresented: $showingNearby) {
+                NearbyPlacesSheet(onPick: adopt)
+            }
             .task {
                 // The amount, not the title. The amount is the one field this
                 // screen cannot be saved without, and it raises the decimal pad
@@ -536,17 +562,45 @@ struct ExpenseFormView: View {
     /// entire purpose is one number is a label nobody needed.
     private var expenseSection: some View {
         Section {
-            // Named as optional in the placeholder, because nothing else on
-            // screen says so: Save stays enabled with it blank, and a field
-            // people believe is required is one they stop to fill in.
-            TextField("Title (optional)", text: $title)
-                .submitLabel(.next)
-                // Pinned, so the placeholder above is free to change wording
-                // without breaking the UI tests that reach for this field.
-                .accessibilityIdentifier("Title")
+            HStack(spacing: 12) {
+                // Named as optional in the placeholder, because nothing else on
+                // screen says so: Save stays enabled with it blank, and a field
+                // people believe is required is one they stop to fill in.
+                TextField("Title (optional)", text: $title)
+                    .submitLabel(.next)
+                    // Pinned, so the placeholder above is free to change wording
+                    // without breaking the UI tests that reach for this field.
+                    .accessibilityIdentifier("Title")
+
+                if nearby.isOffered {
+                    nearbyButton
+                }
+            }
 
             amountRow
         }
+    }
+
+    /// Offers the places around you as a title — and only ever when asked.
+    ///
+    /// Icon-only, which is unusual for this app and is the point: the row's
+    /// width belongs to the field, and nobody sees this button without having
+    /// turned it on in Settings first, so it is not carrying the job of
+    /// explaining itself. The sheet it opens is titled in words.
+    private var nearbyButton: some View {
+        Button {
+            showingNearby = true
+        } label: {
+            Image(systemName: "location")
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        // Otherwise the whole row takes the tap: a `Button` inside a `Form` row
+        // renders as one tappable cell, and typing in the field would open the
+        // sheet.
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("Nearby"))
+        .accessibilityIdentifier("Nearby")
     }
 
     /// The rows that already have an answer when the sheet opens.
@@ -569,6 +623,7 @@ struct ExpenseFormView: View {
     private var detailsSection: some View {
         Section {
             categoryRow
+            placeRow
             tipRow
             currencyRow
             rateRow
@@ -729,6 +784,43 @@ struct ExpenseFormView: View {
     /// one nobody discovers. It reads *None* until it is used, which is also
     /// what it must default to — a remembered 15% silently inflating the next
     /// bill is the one failure here nobody would catch.
+    /// Where this expense happened, once a place has been picked.
+    ///
+    /// The row exists so the attachment is *visible at the moment it is made*,
+    /// which is the condition the whole feature was made acceptable under. A
+    /// place is the one thing on an expense that says where a person physically
+    /// was, it goes into the shared zone with everything else, and it does not
+    /// come back out — so it cannot be a fact the form acquired silently, and
+    /// it has to be removable without deleting the expense.
+    ///
+    /// Absent entirely otherwise. An empty "Place —" row on every expense would
+    /// advertise a feature most groups will never turn on.
+    @ViewBuilder
+    private var placeRow: some View {
+        if let attached = placeName {
+            qualifier {
+                HStack {
+                    Label(attached, systemImage: "mappin.and.ellipse")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 12)
+
+                    Button {
+                        placeName = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text("Remove Place"))
+                }
+            }
+        }
+    }
+
     private var tipRow: some View {
         Menu {
             Button("None") { tipPercent = 0 }
@@ -1463,6 +1555,63 @@ struct ExpenseFormView: View {
             )
     }
 
+    // MARK: - Nearby
+
+    /// Takes the name of the place the user picked, and — if they asked for it
+    /// — the currency of the country that place is in.
+    ///
+    /// Overwrites whatever was typed, deliberately: the button was tapped and
+    /// the row was chosen, which is two explicit answers to "what should this
+    /// be called". Merging the two — appending, or only filling a blank field —
+    /// would make the same tap do different things depending on state the user
+    /// is not looking at.
+    private func adopt(_ place: NearbyPlaces.Place) {
+        title = place.name
+        placeName = place.name
+        adoptCurrency(of: place)
+    }
+
+    /// Switches the expense into the local currency, from the country of the
+    /// place that was just chosen.
+    ///
+    /// The country comes off the picked `MKMapItem` rather than from a
+    /// reverse-geocode of the device: it is already in hand, it costs no second
+    /// network call, and it is the country of a place the user named out loud
+    /// rather than an inference about where they are.
+    ///
+    /// Four guards, and each one is a way this could be wrong rather than
+    /// merely unhelpful:
+    ///
+    /// - **The setting.** Off by default. Somebody can reasonably want the
+    ///   café's name without wanting the form to change the figure's meaning.
+    /// - **Never while editing.** Reopening an expense saved in Budapest, from
+    ///   a table in Kraków, must not rewrite the currency it was saved in — the
+    ///   amount underneath it would keep its digits and quietly change value.
+    /// - **A country with no currency answers `nil`**, and `nil` means leave it
+    ///   alone. Never `Locale.current.region`, which is the device's *setting*
+    ///   rather than where it is, and so is wrong for exactly the traveller
+    ///   this feature exists for.
+    /// - **No change is not a change.** Assigning the same code would still fire
+    ///   `onChange` below and re-derive a rate the user may have just typed
+    ///   over.
+    private func adoptCurrency(of place: NearbyPlaces.Place) {
+        guard
+            !isEditing,
+            ExpenseDefaults.prefillsCurrencyFromLocation,
+            let region = place.regionCode,
+            let local = RegionCurrency.code(for: region),
+            local != currencyCode
+        else { return }
+
+        // Assigns the code and stops. The rate belongs to `onChange(of:)`
+        // above, which looks up whatever this group last used *for this
+        // currency* and leaves the field empty when there is nothing — so an
+        // unseen currency disables Save until a rate is entered, rather than
+        // converting at the last country's. Setting `rateText` here as well
+        // would be the bug that entry warns about, written a second time.
+        currencyCode = local
+    }
+
     // MARK: - Currency
 
     private var isForeign: Bool { currencyCode != group.currency }
@@ -1639,6 +1788,7 @@ struct ExpenseFormView: View {
                     contributions: contributionWeights,
                     splitAmong: selectedParticipants,
                     category: category,
+                    at: placeName,
                     // Only when it actually moved. An untouched picker passes
                     // `nil`, which leaves the stored value exactly as it was —
                     // including leaving a dateless record dateless, rather than
@@ -1659,6 +1809,7 @@ struct ExpenseFormView: View {
                     splitAmong: selectedParticipants,
                     in: group,
                     category: category,
+                    at: placeName,
                     on: date,
                     paidIn: foreign,
                     shares: weights,

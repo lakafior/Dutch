@@ -4783,6 +4783,269 @@
           }
         }
       }
+    },
+    "location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja"
+          }
+        }
+      }
+    },
+    "locationExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch reads where you are only when you tap Nearby on an expense — once, to suggest the places around you. Nothing runs in the background, and nothing is saved to a group unless you pick a place."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki nie wybierzesz miejsca."
+          }
+        }
+      }
+    },
+    "locationDeniedExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location is turned off for Dutch in Settings."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja jest wyłączona dla Dutch w Ustawieniach."
+          }
+        }
+      }
+    },
+    "nearbySearching" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking around"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukanie w pobliżu"
+          }
+        }
+      }
+    },
+    "nearbyNothingFoundExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No cafés or restaurants within a short walk. The title field below still works as it always has."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu nie ma kawiarni ani restauracji. Pole tytułu działa tak jak zawsze."
+          }
+        }
+      }
+    },
+    "nearbyPermissionExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch needs permission to read where you are before it can suggest places nearby."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch potrzebuje dostępu do lokalizacji, aby zaproponować miejsca w pobliżu."
+          }
+        }
+      }
+    },
+    "nearbyUnavailableExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch couldn't reach Apple Maps. This needs a connection, so it won't work with roaming off — type a title instead."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch nie może połączyć się z Mapami Apple. Ta funkcja wymaga połączenia z internetem, więc nie zadziała przy wyłączonym roamingu — wpisz tytuł ręcznie."
+          }
+        }
+      }
+    },
+    "Nearby" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu"
+          }
+        }
+      }
+    },
+    "Nothing Nearby" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing Nearby"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nic w pobliżu"
+          }
+        }
+      }
+    },
+    "Location Is Off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location Is Off"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja wyłączona"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz Ustawienia"
+          }
+        }
+      }
+    },
+    "Can't Look Around" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Look Around"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można sprawdzić okolicy"
+          }
+        }
+      }
+    },
+    "Nearby Places" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby Places"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miejsca w pobliżu"
+          }
+        }
+      }
+    },
+    "Currency from Location" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Currency from Location"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waluta z lokalizacji"
+          }
+        }
+      }
+    },
+    "Open Location Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Location Settings"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz ustawienia lokalizacji"
+          }
+        }
+      }
+    },
+    "Remove Place" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Place"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń miejsce"
+          }
+        }
+      }
     }
   },
   "version" : "1.2"

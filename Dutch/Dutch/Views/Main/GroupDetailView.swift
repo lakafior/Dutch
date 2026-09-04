@@ -1322,6 +1322,41 @@ private struct ExpenseRow: View {
 
     private var payer: String { expense.paidBy?.name ?? "?" }
 
+    /// Where it happened, when that is not already what the row is called.
+    ///
+    /// Picking a place writes both the title and the place, so the ordinary
+    /// case is that the two are the same string and this stays `nil` — drawing
+    /// it then would print the café's name twice on one row. It reappears the
+    /// moment somebody renames the expense to *Anna's birthday*, which is
+    /// exactly when the place stops being readable off the title.
+    private var place: String? {
+        let text = expense.placeName?.trimmingCharacters(in: .whitespaces) ?? ""
+        guard !text.isEmpty else { return nil }
+        return text.caseInsensitiveCompare(title ?? "") == .orderedSame ? nil : text
+    }
+
+    /// The second line: who paid, and where, when the two fit together.
+    ///
+    /// Joined onto the payer's line rather than given one of its own. This row
+    /// went from three lines to two once the date moved into the day header,
+    /// and a place is not worth undoing that for — it is a qualifier on a line
+    /// that already reads as one.
+    @ViewBuilder
+    private var payerLine: some View {
+        Group {
+            if let place {
+                Text("\(payer) · \(place)")
+            } else {
+                Text(payer)
+            }
+        }
+        // `.secondary`, not `.tertiary`: tertiary is for decoration, and who
+        // paid is the point of the row.
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityLabel(place.map { "\(accessiblePayer), \($0)" } ?? accessiblePayer)
+    }
+
     /// VoiceOver gets no colour from the circle and would otherwise hear a bare
     /// name with nothing saying what it is doing there.
     private var accessiblePayer: String {
@@ -1375,13 +1410,7 @@ private struct ExpenseRow: View {
                     // payer, which leaves the name as the one thing still worth
                     // a second line: initials are ambiguous and a colour has to
                     // be learned.
-                    //
-                    // `.secondary`, not `.tertiary`: tertiary is for
-                    // decoration, and who paid is the point of the row.
-                    Text(payer)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(accessiblePayer)
+                    payerLine
                 } else {
                     // An untitled expense leads with the payer rather than with
                     // a filler word. "Untitled" says nothing, and says it again
@@ -1394,6 +1423,16 @@ private struct ExpenseRow: View {
                         Text(payer)
                             .font(.body)
                             .accessibilityLabel(accessiblePayer)
+                    }
+
+                    // Only ever drawn for an expense somebody stripped the
+                    // title off while keeping the place, which is rare — and
+                    // the one case where dropping it would lose the row's only
+                    // remaining word about what this was.
+                    if let place {
+                        Text(place)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
