@@ -68,8 +68,17 @@ struct NearbyPlacesSheet: View {
                 description: Text(.nearbyNothingFoundExplanation)
             )
         } else {
-            List(places) { place in
-                row(place)
+            List {
+                Section {
+                    ForEach(places, content: row)
+                } footer: {
+                    // Only on the fallback. A screen asked "what is around me"
+                    // that answers with a street number has to say why, or it
+                    // reads as the search having gone wrong.
+                    if places.contains(where: \.isAddress) {
+                        Text(.nearbyAddressExplanation)
+                    }
+                }
             }
         }
     }
@@ -93,25 +102,34 @@ struct NearbyPlacesSheet: View {
 
                 Spacer(minLength: 12)
 
-                Text(Self.distances.string(fromDistance: place.distance))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    // Read as part of the row's label below, which puts the
-                    // name first — VoiceOver arriving at "80 m" before the café
-                    // it belongs to is a list you have to hear twice.
-                    .accessibilityHidden(true)
+                if let distance = place.distance {
+                    Text(Self.distances.string(fromDistance: distance))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        // Read as part of the row's label below, which puts the
+                        // name first — VoiceOver arriving at "80 m" before the
+                        // café it belongs to is a list you have to hear twice.
+                        .accessibilityHidden(true)
+                }
             }
             .contentShape(Rectangle())
         }
-        .accessibilityLabel(
-            Text(
-                "\(place.name), \(Self.distances.string(fromDistance: place.distance))"
-            )
-        )
+        .accessibilityLabel(Text(label(for: place)))
     }
 
-    /// The two failures worth wording differently: one the user can fix in
-    /// Settings, and one nobody can fix from here.
+    /// Name first, distance after, and no distance at all on the address —
+    /// which is not a distance away from anything.
+    private func label(for place: NearbyPlaces.Place) -> String {
+        guard let distance = place.distance else { return place.name }
+        return "\(place.name), \(Self.distances.string(fromDistance: distance))"
+    }
+
+    /// Each dead end named for the thing that actually gave up.
+    ///
+    /// One of them the user can fix in Settings; the other two they cannot fix
+    /// at all, and are still worth telling apart — the first version said
+    /// "couldn't reach Apple Maps" for a phone that had simply never got a
+    /// location fix, which sends anybody debugging it after the wrong half.
     @ViewBuilder
     private func unavailable(_ failure: NearbyPlaces.Failure) -> some View {
         switch failure {
@@ -125,7 +143,13 @@ struct NearbyPlacesSheet: View {
                     Text("Open Settings")
                 }
             }
-        case .unavailable:
+        case .noFix:
+            ContentUnavailableView(
+                "Can't Find You",
+                systemImage: "location.slash",
+                description: Text(.nearbyNoFixExplanation)
+            )
+        case .searchFailed:
             ContentUnavailableView(
                 "Can't Look Around",
                 systemImage: "wifi.slash",
@@ -143,7 +167,7 @@ struct NearbyPlacesSheet: View {
         } catch let error as NearbyPlaces.Failure {
             failure = error
         } catch {
-            failure = .unavailable
+            failure = .searchFailed
         }
     }
 }

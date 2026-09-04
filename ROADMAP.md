@@ -1163,6 +1163,22 @@ would carry the same word. The valuable half is the second one: the cafés and
 restaurants within a hundred metres, one tap, and the title reads *Café Camelot*.
 MapKit is system, so it costs nothing in the bundle.
 
+**Reverse-geocoding came back as a fallback, and only as one** — added
+2026-09-04, after the first run on a real phone answered *Nothing Nearby* from
+an ordinary desk. The rejection above still stands for what was rejected: the
+*town* is worthless in a group named after it. A **street** is not. It is the
+one thing that separates the market stall, the taxi and the beach bar that Maps
+has never heard of, and those are precisely the expenses that reach an empty
+search. So an empty result reverse-geocodes once and offers a single row, the
+sheet says in a footer why it is showing a street, and the row still has to be
+tapped. It also puts the currency prefill back on that path, since a placemark
+carries `isoCountryCode` exactly as a map item does.
+
+Two things about it are deliberate. It never runs first, because a real place
+beats an address every time. And a street is a **sharper** fact than a café
+name — *Café Camelot* is a public place, *Długa 5* can be somebody's flat — so
+it stays behind the same explicit tap and out of the title until one is made.
+
 **The API is `MKLocalPointsOfInterestRequest(center:radius:)`, not
 `MKLocalSearch.Request`.** The latter searches for text and needs a query
 string; this one browses what is there, takes an `MKPointOfInterestFilter`, and
@@ -1182,7 +1198,11 @@ Three things stand in front of it:
   **Nearby** button that the user taps, never behind the form appearing.
 - **`MKLocalSearch` is a network call**, and the trip abroad is precisely where
   roaming is off. It has to degrade to the plain text field that is there today,
-  quietly, without an error the user can do nothing about.
+  quietly, without an error the user can do nothing about. The trap found in
+  practice is the opposite one: MapKit reports *no results* by **throwing**
+  `MKError.placemarkNotFound`, so a first version that caught every throw as a
+  network failure told everyone on a quiet street that Apple Maps was
+  unreachable, and made its own empty state unreachable too.
 - **The title is deliberately optional** (the reasoning is in `ExpenseFormView`).
   Filling it in automatically whenever it is left empty reintroduces exactly
   what that decision removed: a field the user now has to stop and check.

@@ -4807,13 +4807,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dutch reads where you are only when you tap Nearby on an expense — once, to suggest the places around you. Nothing runs in the background, and nothing is saved to a group unless you pick a place."
+            "value" : "Dutch reads where you are only when you tap Nearby on an expense — once, to suggest the places around you, or the street you are on when it finds none. Nothing runs in the background, and nothing is saved to a group unless you pick one."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki nie wybierzesz miejsca."
+            "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy, a gdy żadnego nie znajdzie, ulicę, na której jesteś. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki czegoś nie wybierzesz."
           }
         }
       }
@@ -5043,6 +5043,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usuń miejsce"
+          }
+        }
+      }
+    },
+    "nearbyNoFixExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your phone couldn't work out where it is. This needs a moment outdoors, or a location that isn't blocked — the title field still works as it always has."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telefon nie ustalił swojego położenia. Potrzeba chwili na zewnątrz albo odblokowanej lokalizacji — pole tytułu działa tak jak zawsze."
+          }
+        }
+      }
+    },
+    "Can't Find You" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Find You"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można ustalić położenia"
+          }
+        }
+      }
+    },
+    "nearbyAddressExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No cafés or restaurants within a short walk, so this is the street you are on. You can edit it like any other title."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu nie ma kawiarni ani restauracji, więc to ulica, na której jesteś. Możesz ją edytować jak każdy inny tytuł."
           }
         }
       }
