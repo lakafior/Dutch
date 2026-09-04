@@ -80,22 +80,72 @@ extension Expense {
     /// the ordinary expense byte-identical to what it was before this feature
     /// existed, which matters most for the client that hasn't updated yet: it
     /// sees a plain even split, because that is exactly what it is.
-    func setShareWeights(_ weights: [UUID: Int]?) {
+    func setShareWeights(_ weights: [UUID: Int]?, exact: Set<UUID> = []) {
         // More than one distinct weight, or there is nothing to record: a
         // uniform weighting is an even split however large the number is, and
         // a single sharer takes the whole amount either way.
+        //
+        // This applies to exact amounts too, and correctly: three people who
+        // each turned out to owe exactly 10.00 of a 30.00 bill *are* an even
+        // split, and storing it as one keeps the record identical to what it
+        // would have been had nobody itemised. The cost is only that reopening
+        // it shows an even split rather than three typed figures — the money is
+        // unchanged, which is the part that has to survive.
         guard let weights, Set(weights.values).count > 1 else {
             shareWeightsJSON = nil
             return
         }
 
-        let encodable = Dictionary(
+        var encodable = Dictionary(
             weights.map { ($0.key.uuidString, $0.value) },
             uniquingKeysWith: { first, _ in first }
         )
+
+        // Only for members who actually have a weight, so a marker can't
+        // outlive the row it describes.
+        for id in exact where weights[id] != nil {
+            encodable[Self.exactMarkerPrefix + id.uuidString] = 1
+        }
+
         shareWeightsJSON = (try? JSONEncoder().encode(encodable))
             .flatMap { String(data: $0, encoding: .utf8) }
     }
+
+    /// The members whose weight was typed as a cash figure rather than as a
+    /// percentage.
+    ///
+    /// Presentation only. Nothing about the split depends on it — the weights
+    /// alone decide every cent — and a record whose markers were lost entirely
+    /// still divides exactly as it should. It exists so that reopening an
+    /// itemised bill shows the figures that were typed instead of the cent
+    /// counts they became, which would read as `2350%`.
+    ///
+    /// **Why this is not a new attribute.** The markers ride in the same JSON
+    /// under keys that are deliberately not UUIDs, and `shareWeights` above
+    /// already discards any key that fails `UUID(uuidString:)`. So a build that
+    /// has never heard of exact amounts — including every copy already
+    /// installed — reads the weighting correctly and ignores these completely.
+    /// A new attribute would have meant a model version, a lightweight
+    /// migration and the CloudKit initialize-and-promote dance, all to carry a
+    /// hint that changes no balance anywhere.
+    var exactShareIDs: Set<UUID> {
+        guard
+            let json = shareWeightsJSON?.data(using: .utf8),
+            let decoded = try? JSONDecoder().decode([String: Int].self, from: json)
+        else { return [] }
+
+        return Set(
+            decoded.keys.compactMap { key in
+                guard key.hasPrefix(Self.exactMarkerPrefix) else { return nil }
+                return UUID(uuidString: String(key.dropFirst(Self.exactMarkerPrefix.count)))
+            }
+        )
+    }
+
+    /// Leads with `$` so the key can never be mistaken for a UUID, which is
+    /// what keeps an older client's decoder throwing it away rather than
+    /// treating it as a member.
+    private static let exactMarkerPrefix = "$exact."
 }
 
 extension ExpenseGroup {

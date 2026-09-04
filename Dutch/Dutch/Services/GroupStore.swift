@@ -186,7 +186,8 @@ struct GroupStore {
         category: ExpenseCategory? = nil,
         on date: Date = Date(),
         paidIn foreign: ForeignAmount? = nil,
-        shares: [UUID: Int]? = nil
+        shares: [UUID: Int]? = nil,
+        exactShares: Set<UUID> = []
     ) throws {
         let expense = Expense(context: context)
         expense.id = UUID()
@@ -201,6 +202,7 @@ struct GroupStore {
             category: category,
             foreign: foreign,
             shares: shares,
+            exactShares: exactShares,
             to: expense
         )
 
@@ -239,7 +241,8 @@ struct GroupStore {
         category: ExpenseCategory? = nil,
         on date: Date? = nil,
         paidIn foreign: ForeignAmount? = nil,
-        shares: [UUID: Int]? = nil
+        shares: [UUID: Int]? = nil,
+        exactShares: Set<UUID> = []
     ) throws {
         if let date { expense.date = date }
 
@@ -251,6 +254,7 @@ struct GroupStore {
             category: category,
             foreign: foreign,
             shares: shares,
+            exactShares: exactShares,
             to: expense
         )
 
@@ -306,6 +310,7 @@ struct GroupStore {
         category: ExpenseCategory?,
         foreign: ForeignAmount?,
         shares: [UUID: Int]?,
+        exactShares: Set<UUID>,
         to expense: Expense
     ) {
         // Written on both paths, `nil` included, so clearing a category on an
@@ -337,6 +342,9 @@ struct GroupStore {
         // an expense doesn't leave their share behind to be resurrected if they
         // are added back.
         let participantIDs = Set(participants.compactMap(\.id))
-        expense.setShareWeights(shares?.filter { participantIDs.contains($0.key) })
+        expense.setShareWeights(
+            shares?.filter { participantIDs.contains($0.key) },
+            exact: exactShares.intersection(participantIDs)
+        )
     }
 }

@@ -85,7 +85,7 @@ recorded.
 | — | Shipped | [Member avatars from SF Symbols](#member-avatars-from-sf-symbols) | A member can wear a glyph instead of their initials. | An optional `symbolName` on `Person`, and the group's curated set renamed `Emblem` and shared rather than copied. | — |
 | — | Shipped | [Archive a group](#archive-a-group) | Finished trips fold into one collapsed row instead of sitting in the list forever. | An optional `archivedDate` on `ExpenseGroup` and a split of the same unfiltered fetch. | Archived groups still count against the free limit, deliberately |
 | 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
-| 12 | Not started | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | The hardest control in the app — it needs a running remainder on screen and a decided answer for when the fixed amounts overshoot. Asked for directly, twice. | Model change; do it in one version 8 with **16** and **21** |
+| 12 | Shipped | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | Cent-weights in the weighting that already existed — no model version, no promote, and an older build divides it correctly rather than falling back. | A tip is no longer separable from the items once saved; it reopens folded in |
 | 16 | Not started | [Several people paid](#16-several-people-paid) | Many payers on one expense, not one. | Reaches `paidBy` in the model *and* `payer: Participant.ID` in the calculator. The workaround — one expense per payer — is exactly correct, so this buys tidiness, not capability. | Model change **and** the calculator contract; sits behind **12** |
 | 19 | Not started | [Prefill the title from where you are](#19-prefill-the-title-from-where-you-are) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalSearch`; MapKit is system. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
 | 20 | Not started | [Prefill the currency from the country you are in](#20-prefill-the-currency-from-the-country-you-are-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, the mapping is already in Foundation. The trap is carrying the previous country's *rate* across. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
@@ -997,10 +997,42 @@ invariant everything else here relies on, that the parts reconstruct the whole:
 this needs a running remainder on screen at all times, and a decided answer for
 what happens when the fixed amounts overshoot the total.
 
-Asked for directly, twice, in the first week of feedback. Do it in the same
-model version as **16** below — the lesson from the first four features here is
-that two attributes arriving separately means running the CloudKit
-initialize-and-promote dance twice, and that is the step that gets missed.
+Asked for directly, twice, in the first week of feedback.
+
+**The model change this entry demanded turned out not to be needed.** The line
+above used to read "do it in the same model version as **16**", which held this
+behind two features it does not depend on. `Money.split(among:)` allocates
+`cents * weight / total`, so weights that *are* the cents and sum to the whole
+come back exactly, with no remainder left to redistribute — and `ExpenseEntry`
+already documents that weights are relative and that nothing depends on reading
+them as percentages. `DutchKit/ExactSplit` does that conversion; the storage is
+the `shareWeightsJSON` string that has been there since percentages shipped.
+
+The consequence is better than the no-op it looks like: a client too old to know
+about this decodes the same integers and computes the *same cents*. The
+percentage weighting shipped without that property — a client predating the
+attribute fell back to an even split.
+
+Which rows were typed as cash rather than derived is a presentation detail, and
+rides in the same JSON under `$exact.<uuid>` keys. `shareWeights` already
+discards any key failing `UUID(uuidString:)`, so those are invisible to every
+build that has ever shipped. Nothing about the split depends on them; losing
+them entirely would cost a nicer edit screen and not one cent.
+
+**What was decided, since the entry asked for both.** The remainder sits in the
+split section's footer and displaces the standing percentage explanation once a
+figure has been typed — it is the sentence that changes as you work. An
+overshoot, and a shortfall with nobody left to absorb it, both block Save with
+the figure named, following `PartialPaymentSheet` rather than clamping silently.
+
+Exact figures are lines off a receipt, so they are read in the currency being
+typed in and *before* the tip — the same field they sit under. Because the
+weighting is relative, a tip and a conversion then apply themselves
+proportionally: everybody pays their own item, converted, plus their share of
+the tip. The one thing that does not survive a round trip is the tip's
+separateness: reopening shows each person's item with their share of the tip
+already folded in, because that is what they owe. The money is right; the
+itemisation is one step less granular than it was when typed.
 
 ### 16. Several people paid
 

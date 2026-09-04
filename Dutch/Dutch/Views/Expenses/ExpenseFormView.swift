@@ -25,6 +25,20 @@ private enum Share {
     static let range = 1 ... 200
 }
 
+/// What one row of the split is currently saying.
+///
+/// Two ways of answering the same question, never one field doing both: `50`
+/// cannot mean half a share on one row and fifty złoty on the next, and a
+/// control where it might is one nobody can read at a glance. A row is in one
+/// mode or the other, and switching is a menu choice rather than a guess made
+/// from what was typed.
+private enum RowShare: Equatable {
+    /// A percentage of a full share — the shipped behaviour, unchanged.
+    case percent(Int)
+    /// A figure the receipt already gave, in the currency being typed in.
+    case exact(Money)
+}
+
 /// Sheet for adding a new expense to a group, or correcting an existing one.
 ///
 /// One form for both, deliberately. The alternative the app used to force was
@@ -69,10 +83,28 @@ struct ExpenseFormView: View {
     /// of `49` — which sums to 549% and is exactly right. Nothing shows the
     /// user that total; the rows show złoty amounts, and those do add up.
     @State private var shares: [Person: Int] = [:]
+    /// Members whose figure came off the receipt instead, in the currency the
+    /// amount above is being typed in.
+    ///
+    /// A member is in exactly one of this and `shares` — presence here is what
+    /// puts the row in exact mode, which is why switching modes removes the
+    /// entry rather than leaving a stale figure behind it.
+    ///
+    /// Deliberately the *typed* currency and *before* the tip, matching the
+    /// field above it: these are the lines on the receipt. The weighting they
+    /// become is relative, so a tip and a conversion both carry through
+    /// proportionally — everybody pays their item plus their share of the tip,
+    /// which is what a tip on an itemised bill means.
+    @State private var exactAmounts: [Person: Money] = [:]
     @State private var splitsEvenly: Bool
     /// The member whose share is being typed in by hand, and the text of it.
     @State private var customTarget: Person?
     @State private var customText = ""
+    /// The member whose exact figure is being typed in, and the text of it.
+    /// Separate from `customTarget` because the two alerts take different
+    /// keyboards and mean different things by the same digits.
+    @State private var exactTarget: Person?
+    @State private var exactText = ""
     /// Tip, tax or service charge, as a percentage of the entered amount.
     ///
     /// A plain `Double` and not a `TipRate`, because the menu writes to it
@@ -213,6 +245,22 @@ struct ExpenseFormView: View {
         let weights = expense.shareWeights
         _splitsEvenly = State(initialValue: weights.isEmpty)
         _shares = State(initialValue: Self.shares(from: weights, in: group))
+        _exactAmounts = State(
+            initialValue: Self.exactAmounts(
+                from: weights,
+                markedBy: expense.exactShareIDs,
+                // The basis the rows are typed against, which is the field
+                // above: the foreign figure when there is one, otherwise the
+                // stored amount. Seeding from the *slices* rather than from the
+                // stored weights is what makes this round-trip — a bill entered
+                // with a tip stored weights summing to the pre-tip figure, and
+                // re-showing those against a field that now holds the tipped
+                // total would leave a remainder the user never created and
+                // Save disabled on an expense they only opened to rename.
+                of: Money(amount: expense.foreignAmount?.amount ?? expense.amount),
+                in: group
+            )
+        )
         self.recentCurrencies = ExpenseDefaults.recentCurrencies(in: group)
     }
 
@@ -236,6 +284,34 @@ struct ExpenseFormView: View {
         return roster(of: group).reduce(into: [:]) { result, member in
             if let id = member.id, let weight = weights[id] {
                 result[member] = weight
+            }
+        }
+    }
+
+    /// The rows that were typed as cash, as the figures they represent.
+    ///
+    /// Reconstructed by dividing the basis the way the stored weighting says
+    /// to, rather than by reading the weights as cents directly. Those two
+    /// agree exactly whenever the expense had no tip and no conversion, and
+    /// where they don't, this one is right: the weights are relative, so what
+    /// the member is actually being charged is their slice.
+    private static func exactAmounts(
+        from weights: [UUID: Int],
+        markedBy marked: Set<UUID>,
+        of basis: Money,
+        in group: ExpenseGroup
+    ) -> [Person: Money] {
+        guard !weights.isEmpty, !marked.isEmpty else { return [:] }
+
+        let slices = Dictionary(
+            SettlementCalculator.slices(of: basis, among: weights)
+                .map { ($0.participant, $0.amount) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        return roster(of: group).reduce(into: [:]) { result, member in
+            if let id = member.id, marked.contains(id), let slice = slices[id] {
+                result[member] = slice
             }
         }
     }
@@ -333,6 +409,21 @@ struct ExpenseFormView: View {
                 Button(.setCustomShare, action: applyCustomShare)
             } message: {
                 Text(.partialPercentageExplanation)
+            }
+            // A second alert rather than a mode inside the first: the two take
+            // different keyboards, and the same digits mean different things in
+            // each. Sharing one field is exactly the ambiguity `RowShare` was
+            // split in two to avoid.
+            .alert("Exact Amount", isPresented: exactBinding) {
+                // Decimal, not the number pad the percentage field uses — the
+                // whole point is a figure off a receipt, and receipts have
+                // minor units.
+                TextField(String(localized: .exactAmountField), text: $exactText)
+                    .keyboardType(.decimalPad)
+                Button("Cancel", role: .cancel) { exactTarget = nil }
+                Button(.setExactAmount, action: applyExactAmount)
+            } message: {
+                Text(.exactAmountExplanation)
             }
             .alert("Custom Tip", isPresented: $showingCustomTip) {
                 // Decimal rather than number pad: 12.5% is a real service
@@ -759,10 +850,19 @@ struct ExpenseFormView: View {
                         avatar: avatars[member],
                         isSelected: selectedParticipants.contains(member),
                         share: splitsEvenly ? nil : share(for: member),
+                        currencyCode: currencyCode,
                         slice: slices[member].map { $0.formatted(in: group) },
                         onTap: { toggle(member) },
-                        onShareChange: { shares[member] = $0 },
-                        onCustomShare: { beginCustomShare(for: member) }
+                        onShareChange: {
+                            shares[member] = $0
+                            // Picking a percentage is how you leave exact mode,
+                            // so the figure goes with it — a row cannot be both
+                            // and a leftover amount would keep winning.
+                            exactAmounts[member] = nil
+                        },
+                        onCustomShare: { beginCustomShare(for: member) },
+                        onExactShare: { beginExactAmount(for: member) },
+                        onClearExact: { clearExactAmount(for: member) }
                     )
                 }
 
@@ -793,6 +893,30 @@ struct ExpenseFormView: View {
                 // The payer is not added implicitly — leaving them out is
                 // how you record paying purely on someone else's behalf.
                 Text(.excludePayerSplitExplanation)
+            } else if let remainderSummary {
+                VStack(alignment: .leading, spacing: 4) {
+                    // Leads, because it is the line that changes as you work
+                    // and the one Save depends on.
+                    Text(remainderSummary)
+                        .motionContentTransition(.numericText())
+
+                    // Only when the two registers are actually on screen
+                    // together. A typed figure directly above a percentage
+                    // invites reading both as money — the first person to hit
+                    // this read `10%` beside `50,00 zł` on a 250,00 bill and
+                    // expected 20,00 rather than the 18,18 a tenth of a share
+                    // comes to. Both numbers were on screen and correct; what
+                    // was missing was which register the percentage was in.
+                    //
+                    // Withheld when every remaining row is a plain full share,
+                    // which is the ordinary "somebody pays their own, the rest
+                    // of us split what's left" case. The percentages are all
+                    // equal there, so nothing about them needs explaining and
+                    // a second line would be permanent furniture.
+                    if mixesExactAndPartialShares {
+                        Text(.shareOfRemainderExplanation)
+                    }
+                }
             } else {
                 // Says outright that the percentages don't add up to 100,
                 // because they don't — six people with one 51%-off fare comes
@@ -816,23 +940,30 @@ struct ExpenseFormView: View {
                 selectedParticipants.remove(member)
                 // Dropped rather than kept: a weight belonging to someone no
                 // longer in the split would reappear from nowhere if they were
-                // added back later.
+                // added back later. Both kinds, for the same reason — an exact
+                // figure left behind would also change what everyone else pays,
+                // by shrinking the remainder they divide.
                 shares[member] = nil
+                exactAmounts[member] = nil
             } else {
                 selectedParticipants.insert(member)
             }
         }
     }
 
-    private func share(for member: Person) -> Int? {
+    private func share(for member: Person) -> RowShare? {
         guard selectedParticipants.contains(member) else { return nil }
-        return shares[member] ?? Share.full
+        if let exact = exactAmounts[member] { return .exact(exact) }
+        return .percent(shares[member] ?? Share.full)
     }
 
     // MARK: - Typing in a share
 
     private func beginCustomShare(for member: Person) {
-        customText = String(share(for: member) ?? Share.full)
+        // The row's percentage rather than what it currently displays: a row
+        // showing an exact figure opens this on the percentage it would go back
+        // to, not on a money amount reinterpreted as one.
+        customText = String(shares[member] ?? Share.full)
         customTarget = member
     }
 
@@ -856,7 +987,44 @@ struct ExpenseFormView: View {
 
         withAnimation(.snappy) {
             shares[member] = min(max(typed, Share.range.lowerBound), Share.range.upperBound)
+            exactAmounts[member] = nil
         }
+    }
+
+    // MARK: - Typing in an exact amount
+
+    private func beginExactAmount(for member: Person) {
+        exactText = exactAmounts[member].map { DecimalInput.text($0.amount) } ?? ""
+        exactTarget = member
+    }
+
+    private var exactBinding: Binding<Bool> {
+        Binding(
+            get: { exactTarget != nil },
+            set: { if !$0 { exactTarget = nil } }
+        )
+    }
+
+    /// An unreadable or negative figure puts the row back on a percentage
+    /// rather than storing something meaningless. Clearing the field is the
+    /// documented way out of exact mode, which is why an empty string is not
+    /// an error here.
+    private func applyExactAmount() {
+        defer { exactTarget = nil }
+        guard let member = exactTarget else { return }
+
+        withAnimation(.snappy) {
+            guard let typed = DecimalInput.parse(exactText), typed >= 0 else {
+                exactAmounts[member] = nil
+                return
+            }
+            exactAmounts[member] = Money(amount: typed)
+        }
+    }
+
+    /// Back to a percentage, from the row's own menu.
+    private func clearExactAmount(for member: Person) {
+        withAnimation(.snappy) { exactAmounts[member] = nil }
     }
 
     /// Turning shares off discards the weighting rather than hiding it. A
@@ -868,7 +1036,10 @@ struct ExpenseFormView: View {
             set: { wantsShares in
                 withAnimation(.snappy) {
                     splitsEvenly = !wantsShares
-                    if !wantsShares { shares = [:] }
+                    if !wantsShares {
+                        shares = [:]
+                        exactAmounts = [:]
+                    }
                 }
             }
         )
@@ -882,6 +1053,10 @@ struct ExpenseFormView: View {
     private var slicePreview: [Person: Money] {
         guard !splitsEvenly, let amount = finalAmount else { return [:] }
 
+        // Empty while the split doesn't add up, so the rows go quiet rather
+        // than showing per-person figures derived from a total nobody agreed
+        // to. The footer is what explains the state; a row quietly showing a
+        // plausible number would contradict it.
         let weights = weightsByID
         guard !weights.isEmpty else { return [:] }
 
@@ -898,16 +1073,115 @@ struct ExpenseFormView: View {
         }
     }
 
-    /// The weighting as the store and the calculator want it. Empty while the
-    /// split is even, which is what leaves the stored expense unweighted.
-    private var weightsByID: [UUID: Int] {
-        guard !splitsEvenly else { return [:] }
+    /// The figure the split is laid against: the amount exactly as typed,
+    /// before the tip and before any conversion.
+    ///
+    /// Not `finalAmount`, deliberately. The exact rows are lines off a receipt,
+    /// and the receipt is in the currency being typed in and does not include
+    /// the tip that gets added afterwards. Because the weighting that comes out
+    /// is *relative*, both then apply themselves proportionally — everyone pays
+    /// their own item, converted, plus their share of the tip.
+    private var splitBasis: Money? { parsedAmount.map(Money.init(amount:)) }
 
-        return selectedParticipants.reduce(into: [:]) { result, member in
-            if let id = member.id {
-                result[id] = shares[member] ?? Share.full
+    /// How the split currently resolves, or `nil` when it is even or there is
+    /// no figure to divide yet.
+    private var splitPlan: ExactSplit.Plan? {
+        guard !splitsEvenly, let basis = splitBasis else { return nil }
+
+        var fixed: [UUID: Money] = [:]
+        var sharing: [UUID: Int] = [:]
+
+        for member in selectedParticipants {
+            guard let id = member.id else { continue }
+            if let exact = exactAmounts[member] {
+                fixed[id] = exact
+            } else {
+                sharing[id] = shares[member] ?? Share.full
             }
         }
+
+        return ExactSplit.plan(total: basis, fixed: fixed, sharing: sharing)
+    }
+
+    /// Whether a typed figure and a partial share are on screen at once.
+    ///
+    /// The condition for saying what a percentage is measured against. Not
+    /// simply "are there exact amounts": a split where everyone else is on a
+    /// plain 100% has nothing ambiguous in it, and the explanation would be
+    /// showing permanently for the commonest shape this feature has.
+    private var mixesExactAndPartialShares: Bool {
+        guard !exactAmounts.isEmpty else { return false }
+
+        return selectedParticipants.contains { member in
+            exactAmounts[member] == nil && (shares[member] ?? Share.full) != Share.full
+        }
+    }
+
+    /// The number of rows still dividing whatever the exact ones leave behind.
+    private var sharingRowCount: Int {
+        selectedParticipants.filter { exactAmounts[$0] == nil }.count
+    }
+
+    /// The weighting as the store and the calculator want it. Empty while the
+    /// split is even, which is what leaves the stored expense unweighted — and
+    /// empty when it doesn't add up, which `isValid` refuses to save anyway.
+    ///
+    /// With no exact rows this is the percentages, untouched: `ExactSplit`
+    /// passes a weighting with nothing fixed straight through, so every expense
+    /// already stored as a percentage split is written back exactly as it was.
+    private var weightsByID: [UUID: Int] {
+        guard let plan = splitPlan, plan.isSatisfiable else { return [:] }
+        return plan.weights
+    }
+
+    /// The members whose figure was typed rather than derived, for the markers
+    /// that let an edit reopen showing the same thing.
+    private var exactIDs: Set<UUID> {
+        guard splitPlan?.isSatisfiable == true else { return [] }
+        return Set(exactAmounts.keys.compactMap(\.id))
+    }
+
+    /// Where the money stands against the total, in words, whenever any of it
+    /// has been entered by hand.
+    ///
+    /// The roadmap's condition for this feature existing at all: fixed rows are
+    /// being typed against a total, and without a running figure the user is
+    /// doing that arithmetic in their head — which is the thing the app is for.
+    /// `nil` on an ordinary percentage split, where there is no remainder to
+    /// track and the standing explanation is the more useful sentence.
+    private var remainderSummary: String? {
+        guard !splitsEvenly, !exactAmounts.isEmpty, let plan = splitPlan else { return nil }
+
+        let figure = plan.remainder.magnitude.formatted(currencyCode: currencyCode)
+
+        if plan.overshoots {
+            return String(
+                localized: "That is \(figure) more than the amount above.",
+                comment: "Shown when the exact amounts typed against a split come to more than the expense. The placeholder is a formatted money amount."
+            )
+        }
+
+        guard sharingRowCount > 0 else {
+            return plan.remainder.isZero
+                ? String(
+                    localized: "The amounts add up to the total.",
+                    comment: "Shown when every member's exact amount has been typed and they sum to the expense exactly."
+                )
+                : String(
+                    localized: "\(figure) of the total is still unaccounted for.",
+                    comment: "Shown when exact amounts fall short of the expense and no member is left to absorb the difference. The placeholder is a formatted money amount."
+                )
+        }
+
+        return plan.remainder.isZero
+            ? String(
+                localized: "The amounts use up the total, so everybody else pays nothing.",
+                comment: "Shown when the exact amounts already come to the whole expense while other members are still in the split."
+            )
+            : String(
+                localized: "\(figure) left for the others to split.",
+                comment: "Shown while some members have an exact amount and the rest divide what remains. The placeholder is a formatted money amount."
+            )
     }
 
     // MARK: - Currency
@@ -1052,6 +1326,11 @@ struct ExpenseFormView: View {
         finalAmount != nil
             && selectedPayer != nil
             && !selectedParticipants.isEmpty
+            // A split that doesn't reconstruct the whole is refused rather than
+            // rounded into shape. `PartialPaymentSheet` already sets the
+            // precedent — an overpayment is blocked with the figure named, not
+            // silently clamped — and the footer above says by how much.
+            && (splitPlan.map(\.isSatisfiable) ?? true)
     }
 
     // MARK: - Save
@@ -1061,6 +1340,7 @@ struct ExpenseFormView: View {
         let foreign = foreignAmount
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let weights = weightsByID
+        let exact = exactIDs
 
         do {
             if let editing {
@@ -1077,7 +1357,8 @@ struct ExpenseFormView: View {
                     // stamping today on it for fixing a typo in the title.
                     on: date == seedDate ? nil : date,
                     paidIn: foreign,
-                    shares: weights
+                    shares: weights,
+                    exactShares: exact
                 )
             } else {
                 try store.addExpense(
@@ -1089,7 +1370,8 @@ struct ExpenseFormView: View {
                     category: category,
                     on: date,
                     paidIn: foreign,
-                    shares: weights
+                    shares: weights,
+                    exactShares: exact
                 )
                 // Only when adding. An edit corrects something recorded
                 // earlier — often much earlier — and letting it rewrite "the
@@ -1173,14 +1455,53 @@ private struct MemberSplitRow: View {
     let name: String
     let avatar: PersonAvatar
     let isSelected: Bool
-    /// The member's percentage of a full share, or `nil` when the split is even
-    /// and no control should appear at all.
-    let share: Int?
+    /// How this member's share is being expressed, or `nil` when the split is
+    /// even and no control should appear at all.
+    let share: RowShare?
+    /// The currency an exact figure was typed in — the one the amount field is
+    /// using, which is not necessarily the group's.
+    let currencyCode: String
     /// What this member will be charged, once there is an amount to divide.
     let slice: String?
     let onTap: () -> Void
     let onShareChange: (Int) -> Void
     let onCustomShare: () -> Void
+    let onExactShare: () -> Void
+    let onClearExact: () -> Void
+
+    /// What the control reads. A percentage keeps its sign; an exact figure is
+    /// formatted as money, so the two can never be misread for one another at
+    /// a glance — which is the entire reason they are separate modes.
+    private func label(for share: RowShare) -> String {
+        switch share {
+        case .percent(let percent): percent.formatted(.percent)
+        case .exact(let amount): amount.formatted(currencyCode: currencyCode)
+        }
+    }
+
+    /// Quiet only for a plain full share, which is the default and says
+    /// nothing. Anything the user actually chose — a percentage or a figure —
+    /// is tinted, because it is the reason this row differs from the others.
+    private func isDefault(_ share: RowShare) -> Bool {
+        share == .percent(Share.full)
+    }
+
+    /// Spelled out rather than read as a bare number, which on its own says
+    /// neither what it is nor which of the two kinds it is.
+    private func accessibleShare(_ share: RowShare) -> String {
+        switch share {
+        case .percent(let percent):
+            String(
+                localized: "\(percent) percent of a full share",
+                comment: "VoiceOver value for a member's weighted share. The placeholder is a whole-number percentage."
+            )
+        case .exact(let amount):
+            String(
+                localized: "Exactly \(amount.formatted(currencyCode: currencyCode))",
+                comment: "VoiceOver value for a member whose share was typed as a cash figure. The placeholder is a formatted money amount."
+            )
+        }
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1239,7 +1560,7 @@ private struct MemberSplitRow: View {
                         Button {
                             onShareChange(preset)
                         } label: {
-                            if preset == share {
+                            if share == .percent(preset) {
                                 Label(preset.formatted(.percent), systemImage: "checkmark")
                             } else {
                                 Text(preset.formatted(.percent))
@@ -1248,10 +1569,23 @@ private struct MemberSplitRow: View {
                     }
                     Divider()
                     Button("Other…", action: onCustomShare)
+                    // Below the percentages and behind its own divider: this is
+                    // the mode switch, not a fifth preset, and a row reading
+                    // "23,50" alongside four reading "50%" is the one thing in
+                    // this menu that changes what the numbers mean.
+                    Button(.exactAmountMenuItem, action: onExactShare)
+
+                    // Offered only from a row already in exact mode. Tapping a
+                    // percentage does the same thing, but that is a discovery
+                    // nobody should have to make to undo something.
+                    if case .exact = share {
+                        Divider()
+                        Button(.backToPercentage, action: onClearExact)
+                    }
                 } label: {
-                    Text(share.formatted(.percent))
+                    Text(label(for: share))
                         .font(.callout.monospacedDigit())
-                        .foregroundStyle(share == Share.full ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+                        .foregroundStyle(isDefault(share) ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                         .motionContentTransition(.numericText())
                         // Padding, not a frame: the tappable area has to clear
                         // 44pt without the text jumping around as it goes from
@@ -1262,7 +1596,7 @@ private struct MemberSplitRow: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Share for \(name)")
-                .accessibilityValue("\(share) percent of a full share")
+                .accessibilityValue(accessibleShare(share))
             }
         }
     }

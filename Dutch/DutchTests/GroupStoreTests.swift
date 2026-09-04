@@ -548,6 +548,114 @@ struct GroupStoreTests {
         #expect(expense.shareWeights.count == 2)
     }
 
+    // MARK: - Exact amounts
+
+    /// The markers ride in the same JSON as the weights under keys that are
+    /// deliberately not UUIDs. This is the property the whole scheme rests on:
+    /// the weighting a build reads is unaffected by them, which is what lets an
+    /// already-installed copy of the app divide an itemised bill correctly
+    /// without knowing the feature exists.
+    @Test("Exact-amount markers do not disturb the weighting")
+    func exactMarkersAreInvisibleToTheWeighting() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        let aliceID = try #require(alice.id)
+        let bobID = try #require(bob.id)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 127.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group,
+            shares: [aliceID: 2_350, bobID: 10_350],
+            exactShares: [aliceID]
+        )
+        let expense = try #require((group.expenses as? Set<Expense>)?.first)
+
+        #expect(expense.shareWeights == [aliceID: 2_350, bobID: 10_350])
+        #expect(expense.exactShareIDs == [aliceID])
+    }
+
+    /// Cent-weights are charged as the figures they are — the property
+    /// `ExactSplit` produces them for, asserted here through the store and the
+    /// balances rather than in isolation.
+    @Test("Cent weights charge each member their exact figure")
+    func centWeightsChargeExactly() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        let aliceID = try #require(alice.id)
+        let bobID = try #require(bob.id)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 127.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group,
+            shares: [aliceID: 2_350, bobID: 10_350],
+            exactShares: [aliceID]
+        )
+
+        // Alice paid 127.00 and owed 23.50 of it, so she is up 103.50 — which
+        // is exactly Bob's typed figure and not a proportion of anything.
+        let bobBalance = try #require(group.balances.first { $0.participant.name == "Bob" })
+        #expect(bobBalance.amount == Money(cents: -10_350))
+    }
+
+    /// A marker for somebody no longer in the split goes with the weight it
+    /// described, for the same reason the weight itself does.
+    @Test("Markers for members dropped from the split are discarded")
+    func markersAreScopedToTheSplit() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+        let carol = try store.addMember(named: "Carol", to: group)
+
+        let aliceID = try #require(alice.id)
+        let bobID = try #require(bob.id)
+        let carolID = try #require(carol.id)
+
+        try store.addExpense(
+            title: "Room", amount: Money(amount: 90.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group,
+            shares: [aliceID: 6_000, bobID: 3_000, carolID: 1_000],
+            exactShares: [aliceID, carolID]
+        )
+        let expense = try #require((group.expenses as? Set<Expense>)?.first)
+
+        #expect(expense.exactShareIDs == [aliceID])
+    }
+
+    /// Uniform weights are stored as no weighting at all, markers included —
+    /// three people who each turned out to owe exactly a third *are* an even
+    /// split, and there is nothing left for a marker to describe.
+    @Test("A uniform set of exact amounts is stored as an even split")
+    func uniformExactAmountsCollapse() throws {
+        let store = GroupStore(context: TestStack.makeContext())
+        let group = try store.createGroup(named: "Berlin Trip")
+        let alice = try store.addMember(named: "Alice", to: group)
+        let bob = try store.addMember(named: "Bob", to: group)
+
+        let aliceID = try #require(alice.id)
+        let bobID = try #require(bob.id)
+
+        try store.addExpense(
+            title: "Dinner", amount: Money(amount: 30.00),
+            paidBy: alice, splitAmong: [alice, bob], in: group,
+            shares: [aliceID: 1_500, bobID: 1_500],
+            exactShares: [aliceID, bobID]
+        )
+        let expense = try #require((group.expenses as? Set<Expense>)?.first)
+
+        #expect(expense.shareWeights.isEmpty)
+        #expect(expense.exactShareIDs.isEmpty)
+
+        let bobBalance = try #require(group.balances.first { $0.participant.name == "Bob" })
+        #expect(bobBalance.amount == Money(cents: -1_500))
+    }
+
     // MARK: - Dating an expense
 
     /// The point of the feature: somebody installs Dutch on day three of a trip
