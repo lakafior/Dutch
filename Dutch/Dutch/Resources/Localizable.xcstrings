@@ -219,7 +219,7 @@
       }
     },
     "%@ tip included" : {
-      "comment" : "Notes that the stored amount already has a tip in it. The placeholder is a formatted percentage, e.g. '15%'.",
+      "comment" : "Notes that the stored amount already has a tip in it. The placeholder is either a formatted percentage, e.g. '15%', or a formatted money amount, e.g. '5,00 zł' — the sentence is the same for both.",
       "localizations" : {
         "pl" : {
           "stringUnit" : {
@@ -620,6 +620,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld do rozliczenia"
+          }
+        }
+      }
+    },
+    "tipAmountExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A flat sum added on top of the amount before it is split, so everyone shares it. Leave it blank to go back to a percentage."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stała kwota doliczana do kwoty przed podziałem, więc dzielą ją wszyscy. Zostaw puste, aby wrócić do procentów."
+          }
+        }
+      }
+    },
+    "tipAmountMenuItem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip Amount…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kwota napiwku…"
+          }
+        }
+      }
+    },
+    "tipAmountTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip Amount"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kwota napiwku"
           }
         }
       }

@@ -138,14 +138,6 @@ struct ExpenseFormView: View {
     /// keyboards and mean different things by the same digits.
     @State private var exactTarget: Person?
     @State private var exactText = ""
-    /// Tip, tax or service charge, as a percentage of the entered amount.
-    ///
-    /// A plain `Double` and not a `TipRate`, because the menu writes to it
-    /// directly and `0` is a legal, meaningful value here — `tip` below turns
-    /// it into the checked type. Always starts at none, including on an edit
-    /// and on a duplicate: the tip is folded into the stored amount, so the
-    /// figure in the field above is already the tipped one, and re-offering a
-    /// percentage would apply it a second time.
     /// What it was for, or `nil` for the expense nobody filed. Optional in the
     /// state as well as in the model: a category is a thing to leave blank, and
     /// defaulting it to *Other* would fill the log with a word meaning "the
@@ -161,11 +153,30 @@ struct ExpenseFormView: View {
     /// today onto a dateless record the moment somebody edited its title.
     private let seedDate: Date
 
-    @State private var tipPercent: Double = 0
+    /// Tip, tax or service charge — a percentage of the amount or a flat sum,
+    /// never both.
+    ///
+    /// Always starts at none, including on an edit and on a duplicate: the tip
+    /// is folded into the stored amount, so the figure in the field above is
+    /// already the tipped one, and re-offering it would apply it a second time.
+    @State private var tip: Tip = .none
     @State private var showingCustomTip = false
     @State private var customTipText = ""
+    /// The flat sum being typed. Separate from `customTipText` for the reason
+    /// the two share alerts are separate: the same digits mean a percentage in
+    /// one and money in the other, and a field that might be either is the
+    /// ambiguity `Tip` has two cases to avoid.
+    @State private var flatTipText = ""
+    @State private var showingFlatTip = false
     @State private var errorMessage: String?
     @FocusState private var amountFocused: Bool
+    /// Whether the currency list is on screen.
+    ///
+    /// A pushed destination driven by a flag rather than a `NavigationLink`,
+    /// because the control that opens it now shares a row with the amount
+    /// field — and a `NavigationLink` in a `Form` claims the whole row, which
+    /// would mean tapping the number to type in it pushed a screen instead.
+    @State private var showingCurrencyPicker = false
 
     /// The nearby-places service, observed so the button appears and disappears
     /// with the setting and with the system's answer — a form left open while
@@ -413,11 +424,20 @@ struct ExpenseFormView: View {
         let avatars = RosterAvatars(roster)
 
         NavigationStack {
+            // The order is the whole point of this screen's last revision, and
+            // it is worth stating so it is not tidied back: the figure and
+            // everything that changes it come first, then the two questions a
+            // balance is actually made of, and the prefilled rows nobody
+            // touches on the ordinary path come last.
+            //
+            // Details used to sit second, which meant a round of drinks split
+            // evenly — the commonest expense there is — scrolled past six rows
+            // it would never answer to reach the two it had to.
             Form {
-                expenseSection
-                detailsSection
+                amountSection
                 paidBySection(roster, avatars)
                 splitAmongSection(slices, roster, avatars)
+                detailsSection
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(navigationTitle)
@@ -509,9 +529,29 @@ struct ExpenseFormView: View {
             } message: {
                 Text(.tipExplanation)
             }
+            // A second alert rather than a mode inside the first, on the same
+            // reasoning that split Custom Share from Exact Amount: the two mean
+            // different things by the same digits, and the field's own prompt
+            // — Percent against Amount — is the only thing on screen saying
+            // which was asked for.
+            .alert(Text(.tipAmountTitle), isPresented: $showingFlatTip) {
+                TextField(String(localized: .exactAmountField), text: $flatTipText)
+                    .keyboardType(.decimalPad)
+                Button("Cancel", role: .cancel) {}
+                Button(.setExactAmount, action: applyFlatTip)
+            } message: {
+                Text(.tipAmountExplanation)
+            }
             .errorBanner($errorMessage)
             .sheet(isPresented: $showingNearby) {
                 NearbyPlacesSheet(onPick: adopt)
+            }
+            .navigationDestination(isPresented: $showingCurrencyPicker) {
+                CurrencyPicker(
+                    selection: $currencyCode,
+                    inUse: inUseCurrencies,
+                    all: Locale.commonISOCurrencyCodes
+                )
             }
             .task {
                 // The amount, not the title. The amount is the one field this
@@ -533,35 +573,59 @@ struct ExpenseFormView: View {
     /// The step down in weight given to every row the form can be saved
     /// without.
     ///
-    /// Title and Amount are what an expense is made of; Tip, Currency, the rate
-    /// and the date are all rows that already have an answer when the sheet
-    /// opens, and in the ordinary case — a single-currency group buying a round
-    /// today with no service charge on it — not one of the four is touched.
-    /// Drawn at the same weight as the amount, they read as five equally
-    /// important questions on a form whose entire purpose is one number.
+    /// The amount is what an expense is; the rate, the tip, the place, the date
+    /// and the category are rows that either already have an answer when the
+    /// sheet opens or are absent until something is attached. In the ordinary
+    /// case — a single-currency group buying a round today with no service
+    /// charge on it — not one of them is touched. Drawn at the same weight as
+    /// the amount, they read as a set of equally important questions on a form
+    /// whose entire purpose is one number.
     ///
     /// The rule used to be narrower: *qualifies the amount rather than being
     /// it*, which was true of the first three and made the date look like an
-    /// exception when it arrived. It isn't one. What the four have in common is
-    /// that they are prefilled and optional, and that is the property worth
+    /// exception when it arrived. It isn't one. What they have in common is
+    /// that they are prefilled or optional, and that is the property worth
     /// drawing — a required field the user must answer and a defaulted one they
     /// may ignore should not carry the same weight.
     ///
     /// One step of the type scale, not a hand-picked size, so Larger Text keeps
-    /// scaling all of it. Defined here rather than repeated at the four call
-    /// sites because the decision is "these are secondary", and it should be
-    /// possible to change that in one place.
+    /// scaling all of it. Defined here rather than repeated at the call sites
+    /// because the decision is "these are secondary", and it should be possible
+    /// to change that in one place.
     private func qualifier<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content().font(.subheadline)
     }
 
-    /// What an expense *is*: a title and a figure.
+    /// The figure, and everything that changes what it means.
     ///
     /// Headerless, and first. The navigation title already says which of the
-    /// three things this sheet is, and a header over two rows in a form whose
-    /// entire purpose is one number is a label nobody needed.
-    private var expenseSection: some View {
+    /// three things this sheet is, and a header over a screen whose entire
+    /// purpose is one number is a label nobody needed.
+    ///
+    /// Amount leads because it is the only field Save depends on — the cursor
+    /// has started here since the first-feedback batch, and the reading order
+    /// now agrees with the typing order instead of contradicting it. The rate
+    /// follows immediately because a foreign amount is not a figure at all
+    /// until it has one.
+    ///
+    /// Then the title, and *then* the tip — not the other way round, which is
+    /// how this was first written. Amount and title are the two rows a person
+    /// actually fills in; the tip is an adjustment most expenses never carry,
+    /// and putting it between them is the same mistake this reorder exists to
+    /// fix, only smaller. Last also puts it directly above the footer that
+    /// says a tip is included, which is where it wants to be read.
+    ///
+    /// The place is here rather than in **Details** even though it reads like
+    /// a detail, and that is deliberate. It exists only as the consequence of
+    /// tapping **Nearby** on the title row directly above it, and the whole
+    /// feature was made acceptable on the condition that the attachment is
+    /// visible at the moment it is made. Two sections down it would be off
+    /// screen at exactly that moment.
+    private var amountSection: some View {
         Section {
+            amountRow
+            rateRow
+
             HStack(spacing: 12) {
                 // Named as optional in the placeholder, because nothing else on
                 // screen says so: Save stays enabled with it blank, and a field
@@ -577,7 +641,21 @@ struct ExpenseFormView: View {
                 }
             }
 
-            amountRow
+            placeRow
+            tipRow
+        } footer: {
+            // Echoes back exactly what will be stored, which is the only way
+            // the user can catch a mis-parsed separator — or a rate entered
+            // upside down — before saving.
+            //
+            // Directly under the three rows that decide the figure, which is
+            // where it belongs and where it now is: it used to footer the
+            // Details section because Currency and the rate lived there, and
+            // moving those up here brought it with them.
+            if let summary = savesAsSummary {
+                Text(summary)
+                    .motionContentTransition(.numericText())
+            }
         }
     }
 
@@ -603,46 +681,26 @@ struct ExpenseFormView: View {
         .accessibilityIdentifier("Nearby")
     }
 
-    /// The rows that already have an answer when the sheet opens.
+    /// The two rows that already have an answer when the sheet opens.
     ///
-    /// A section of their own rather than four `qualifier` rows trailing the
-    /// amount. The step down the type scale says *how much these matter*; a
-    /// section boundary says *what they are* — a group the user can skip in one
-    /// glance rather than four rows they have to read to discover are optional.
-    /// In the ordinary case — a single-currency group buying a round today with
-    /// no service charge — not one of them is touched, and this is where
-    /// Categories will land when it ships.
+    /// Last, and that is the change this section exists to record. It used to
+    /// sit second, on the reasoning that the rate is required for a foreign
+    /// expense and that the footer beneath it was the only place a bad rate
+    /// could be caught — both true, and both arguments about Currency, the
+    /// rate and the tip rather than about Date and Category. Those three moved
+    /// up to the figure they qualify and took the footer with them, which
+    /// leaves nothing here that Save can ever depend on.
     ///
-    /// Deliberately **not** collapsed. Three things live in here that must stay
-    /// visible: the exchange rate is *required* once a foreign currency is
-    /// chosen, `savesAsSummary` below is the only place a mis-parsed separator
-    /// or an upside-down rate can be caught, and the date's whole value is that
-    /// a user adopting the app mid-trip can see that backdating exists. Hiding
-    /// the first behind a chevron greys out Save with its explanation folded
-    /// away; hiding the third takes back the reason the row was added.
+    /// Deliberately **not** collapsed behind a chevron. The date's whole value
+    /// is that a user adopting the app mid-trip can *see* that backdating
+    /// exists; hiding the row takes back the reason it was added, and a section
+    /// of two rows saves nothing worth that.
     private var detailsSection: some View {
         Section {
-            categoryRow
-            placeRow
-            tipRow
-            currencyRow
-            rateRow
             dateRow
+            categoryRow
         } header: {
             Text(.expenseDetails)
-        } footer: {
-            // Echoes back exactly what will be stored, which is the only way
-            // the user can catch a mis-parsed separator — or a rate entered
-            // upside down — before saving.
-            //
-            // Footer of *this* section rather than of the amount's, because the
-            // rows that change the figure are the ones directly above it — and
-            // because its other job is naming the missing rate, which is a row
-            // in here.
-            if let summary = savesAsSummary {
-                Text(summary)
-                    .motionContentTransition(.numericText())
-            }
         }
     }
 
@@ -684,15 +742,16 @@ struct ExpenseFormView: View {
 
     /// When it happened.
     ///
-    /// Last, below the amount and the rows adjusting it. The amount leading the
-    /// form was a first-feedback-batch decision and the right one — it is the
-    /// only field the form cannot be saved without — so nothing goes above it,
-    /// and this is the least often touched of the four rows under it.
+    /// The first row of **Details**, at the foot of the form. It was directly
+    /// under the amount for as long as Details sat second, on the reasoning
+    /// that nothing goes above the one field Save depends on; that reasoning
+    /// survives the move, because nothing still does. This is simply the least
+    /// often touched row on the screen, and it is now filed with the other one.
     ///
-    /// A `qualifier`, like Tip and Currency: the form opens with today already
-    /// in it and saves perfectly well without the row being touched, and a
-    /// prefilled optional row at the same weight as the one field Save depends
-    /// on overstates it.
+    /// A `qualifier`, like the tip and the rate: the form opens with today
+    /// already in it and saves perfectly well without the row being touched,
+    /// and a prefilled optional row at the same weight as the amount overstates
+    /// it.
     ///
     /// `.compact` shows the real date rather than a *Today* placeholder, so the
     /// capability is visible without occupying the screen: somebody who never
@@ -732,8 +791,14 @@ struct ExpenseFormView: View {
         max(seedDate, Date())
     }
 
+    /// The one field this form cannot be saved without, drawn like it.
+    ///
+    /// A step up the type scale rather than a hand-picked size, so Larger Text
+    /// keeps scaling it, and `.monospacedDigit()` so the figure stops shifting
+    /// sideways as digits are typed. Every other row on this screen is either
+    /// `body` or a `qualifier` below it; this is the only one above.
     private var amountRow: some View {
-        HStack {
+        HStack(spacing: 12) {
             // Hidden from VoiceOver because the field below carries the
             // same label — otherwise it is announced twice.
             Text(.amount)
@@ -745,19 +810,49 @@ struct ExpenseFormView: View {
                 .focused($amountFocused)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
-                .font(.body.monospacedDigit())
+                .font(.title3.weight(.semibold).monospacedDigit())
                 // Without this the field's only label is its "0"
                 // placeholder, which VoiceOver reads as "zero, text field".
                 .accessibilityLabel("Amount")
                 .accessibilityHint("In \(currencyCode)")
 
-            // Shown as a code rather than a symbol so it stays unambiguous
-            // between the currencies that share a `$` or a `kr`.
-            Text(currencyCode)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+            currencyButton
         }
+    }
+
+    /// The currency, as a control on the amount rather than a row of its own.
+    ///
+    /// This was a `NavigationLink` in the Details section, which put the code
+    /// that says what the figure *means* two rows away from the figure, and
+    /// spent a whole row on it. Attached to the field it qualifies, it costs no
+    /// height at all and reads the way a currency control reads everywhere
+    /// else — the amount, then the unit, then a way to change the unit.
+    ///
+    /// Still the code and not a symbol, which is the older decision and still
+    /// the right one: `$` and `kr` are each several currencies, and a form
+    /// whose whole job is an unambiguous number should not label it ambiguously.
+    ///
+    /// `.borderless`, or the button takes the whole row and typing in the
+    /// amount opens the picker — the same trap `nearbyButton` documents. The
+    /// chevron is what makes it legible as a control rather than as the grey
+    /// suffix it used to be, and the 44pt frame is what makes it hittable.
+    private var currencyButton: some View {
+        Button {
+            showingCurrencyPicker = true
+        } label: {
+            HStack(spacing: 2) {
+                Text(currencyCode)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("Currency"))
+        .accessibilityValue(Text(currencyCode))
     }
 
     /// The percentages offered before anyone has to type one.
@@ -843,10 +938,12 @@ struct ExpenseFormView: View {
 
     private var tipRow: some View {
         Menu {
-            Button("None") { tipPercent = 0 }
+            Button("None") { tip = .none }
 
             ForEach(Self.tipPresets, id: \.self) { percent in
-                Button(Self.percentText(percent)) { tipPercent = percent }
+                Button(Self.percentText(percent)) {
+                    tip = TipRate(percent: percent).map(Tip.rate) ?? .none
+                }
             }
 
             Divider()
@@ -854,6 +951,25 @@ struct ExpenseFormView: View {
             Button(.customTip) {
                 customTipText = ""
                 showingCustomTip = true
+            }
+
+            // Below the percentages and behind the same divider, exactly as
+            // `Exact Amount…` sits below the presets in a split row's menu.
+            // This is the mode switch, not a sixth preset: a tip reading
+            // "5,00 zł" among four reading "15%" is the one item in here that
+            // changes what the number means.
+            Button(.tipAmountMenuItem) {
+                flatTipText = ""
+                showingFlatTip = true
+            }
+
+            // Offered only from a tip already expressed as a sum. Picking a
+            // percentage does the same thing, but that is a discovery nobody
+            // should have to make to undo something — the split rows make the
+            // same offer for the same reason.
+            if case .flat = tip {
+                Divider()
+                Button(.backToPercentage) { tip = .none }
             }
         } label: {
             // An `HStack`, not a `LabeledContent`, and that is not a style
@@ -880,7 +996,7 @@ struct ExpenseFormView: View {
 
                     Spacer(minLength: 12)
 
-                    Text(tip.isNone ? String(localized: "None") : Self.percentText(tipPercent))
+                    Text(tip.isNone ? String(localized: "None") : tipFigure)
                         .foregroundStyle(
                             tip.isNone ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint)
                         )
@@ -891,45 +1007,35 @@ struct ExpenseFormView: View {
         .accessibilityIdentifier("Tip")
     }
 
+    /// The tip as the row and the footer both say it: a percentage, or money.
+    ///
+    /// Formatted in the currency being *entered*, which is what `Tip.flat`
+    /// holds and what the person typed — not the group's, which the figure only
+    /// becomes after the conversion the footer reports separately.
+    private var tipFigure: String {
+        switch tip {
+        case .rate(let rate): Self.percentText(rate.percent)
+        case .flat(let amount): amount.formatted(currencyCode: currencyCode)
+        }
+    }
+
     private func applyCustomTip() {
         guard
             let typed = DecimalInput.parse(customTipText),
             let rate = TipRate(percent: typed)
         else { return }
-        tipPercent = rate.percent
+        tip = .rate(rate)
     }
 
-    /// Lets an expense be entered in whatever was actually handed over, which
-    /// on a trip through two countries is not the currency the group settles in.
-    private var currencyRow: some View {
-        NavigationLink {
-            CurrencyPicker(
-                selection: $currencyCode,
-                inUse: inUseCurrencies,
-                all: Locale.commonISOCurrencyCodes
-            )
-        } label: {
-            // The code alone, not the code and its name. This is a row in a
-            // form, and "PLN · Polish Zloty" trailing a label pushes the two
-            // into a wrap at accessibility text sizes for a word the user just
-            // chose and already knows.
-            // Laid out by hand for the reason given on `tipRow`: inside a
-            // `NavigationLink`, `LabeledContent` renders its value at body
-            // size whatever font is set around it, so this row's PLN came out
-            // matching the amount above it — the one figure on this screen it
-            // is supposed to be subordinate to.
-            qualifier {
-                HStack {
-                    Text("Currency")
-                        .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 12)
-
-                    Text(currencyCode)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    /// A blank or unreadable field clears the tip rather than storing something
+    /// meaningless, which is also the documented way back out of a flat sum —
+    /// the same contract `applyExactAmount` has one section below.
+    private func applyFlatTip() {
+        guard let typed = DecimalInput.parse(flatTipText), let flat = Tip.flat(typed) else {
+            tip = .none
+            return
         }
+        tip = flat
     }
 
     /// Only meaningful when the money wasn't the group's own currency, so it
@@ -937,10 +1043,11 @@ struct ExpenseFormView: View {
     @ViewBuilder
     private var rateRow: some View {
         if isForeign {
-            // Demoted with Tip and Currency, even though Save is disabled
-            // without it. It is required only *because* a foreign currency was
-            // chosen on the row above — it belongs to that choice rather than
-            // standing beside the amount — and nothing here has to carry the
+            // A `qualifier` like the tip and the date, even though Save is
+            // disabled without it. It is required only *because* a foreign
+            // currency was chosen — on the row directly above, where the
+            // currency control now lives — so it belongs to that choice rather
+            // than standing beside the amount, and nothing here has to carry the
             // news that it is missing: the footer says "Enter the rate to
             // convert this to EUR" in words, which is louder than a font.
             qualifier {
@@ -1644,23 +1751,6 @@ struct ExpenseFormView: View {
 
     private var isForeign: Bool { currencyCode != group.currency }
 
-    /// Built once — `commonISOCurrencyCodes` is ~150 entries and looking up a
-    /// localized name per row per render would redo that work on every keystroke
-    /// in the amount field.
-    fileprivate static let currencyNames: [String: String] = {
-        let locale = Locale.current
-        return Dictionary(
-            uniqueKeysWithValues: Locale.commonISOCurrencyCodes.compactMap { code in
-                locale.localizedString(forCurrencyCode: code).map { (code, $0) }
-            }
-        )
-    }()
-
-    fileprivate static func currencyLabel(_ code: String) -> String {
-        guard let name = currencyNames[code] else { return code }
-        return "\(code) · \(name)"
-    }
-
     /// The codes actually in play in this group: its own first, then whatever
     /// is selected, then the foreign currencies it has already spent in.
     ///
@@ -1681,21 +1771,21 @@ struct ExpenseFormView: View {
 
     private var parsedAmount: Double? { DecimalInput.parse(amountText) }
 
-    /// The tip as the checked type. An out-of-range `tipPercent` cannot arrive
-    /// here — the menu offers only valid values and `applyCustomTip` refuses
-    /// the rest — so falling back to `.none` is belt and braces rather than a
-    /// silent correction.
-    private var tip: TipRate { TipRate(percent: tipPercent) ?? .none }
-
     /// The entered figure with the tip on top, which is what everything below
     /// converts and stores.
     ///
     /// Applied here, in the currency the money was actually handed over in and
-    /// before any conversion, for the reason spelled out in `TipRate.applied`:
-    /// the amount is rounded to minor units exactly once, and tipping after
-    /// that would round twice and let a split miss its own total by a cent. It
-    /// also means a tipped foreign bill records what was really paid — 1 650
-    /// HUF, not 1 500 with a euro adjustment bolted on.
+    /// before any conversion, for the reason spelled out in `Tip.applied`: the
+    /// amount is rounded to minor units exactly once, and tipping after that
+    /// would round twice and let a split miss its own total by a cent. It also
+    /// means a tipped foreign bill records what was really paid — 1 650 HUF,
+    /// not 1 500 with a euro adjustment bolted on.
+    ///
+    /// True of a flat sum as much as of a percentage, and that is why the flat
+    /// case holds a figure in the *entered* currency: 150 HUF added to 1 500
+    /// HUF, converted once. A tip held in the group's currency would have to be
+    /// converted back to be added, which is a second rounding wearing a
+    /// disguise.
     private var tippedAmount: Double? {
         parsedAmount.map(tip.applied(to:))
     }
@@ -1759,10 +1849,14 @@ struct ExpenseFormView: View {
         }
 
         if !tip.isNone {
+            // One sentence for both kinds, with either a percentage or a money
+            // figure in it. The clause reads the same either way — "15% tip
+            // included", "5,00 zł tip included" — so splitting it in two would
+            // hand a translator the same sentence twice.
             parts.append(
                 String(
-                    localized: "\(Self.percentText(tipPercent)) tip included",
-                    comment: "Notes that the stored amount already has a tip in it. The placeholder is a formatted percentage, e.g. '15%'."
+                    localized: "\(tipFigure) tip included",
+                    comment: "Notes that the stored amount already has a tip in it. The placeholder is either a formatted percentage, e.g. '15%', or a formatted money amount, e.g. '5,00 zł' — the sentence is the same for both."
                 )
             )
         }
@@ -2103,85 +2197,6 @@ private struct MemberSplitRow: View {
                 .accessibilityLabel("Share for \(name)")
                 .accessibilityValue(accessibleShare(share))
             }
-        }
-    }
-}
-
-// MARK: - Currency Picker
-
-/// The currency list, as a screen of its own rather than a `Picker`.
-///
-/// `.pickerStyle(.navigationLink)` pushes a list that cannot be searched, and
-/// this one is ~150 rows: reaching HUF meant scrolling past a hundred codes
-/// nobody on the trip will ever spend. Search is the entire reason this is
-/// hand-rolled, and it matches the localized name as readily as the code —
-/// somebody hunting for forint does not necessarily know it is HUF.
-private struct CurrencyPicker: View {
-    @Binding var selection: String
-    /// The group's own currency, the selection, and whatever this trip has
-    /// already spent in — see `ExpenseFormView.inUseCurrencies`.
-    let inUse: [String]
-    let all: [String]
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
-
-    var body: some View {
-        List {
-            let used = matches(inUse)
-            if !used.isEmpty {
-                Section("Used in This Group") {
-                    ForEach(used, id: \.self, content: row)
-                }
-            }
-
-            // The full list stays full, including the codes repeated above.
-            // Filtering them out would make the alphabet skip entries for
-            // reasons invisible to somebody scrolling it, and a duplicated tick
-            // in two sections is the ordinary shape of a suggestions list.
-            Section("All Currencies") {
-                ForEach(matches(all), id: \.self, content: row)
-            }
-        }
-        .searchable(text: $query, prompt: "Code or name")
-        .navigationTitle("Currency")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    /// A row, not a `Picker` tag: choosing a currency should close the screen
-    /// the way a picker's own list does, and a plain selection binding would
-    /// leave the user to find Back for themselves.
-    private func row(_ code: String) -> some View {
-        Button {
-            selection = code
-            dismiss()
-        } label: {
-            HStack(spacing: 12) {
-                Text(ExpenseFormView.currencyLabel(code))
-                    .foregroundStyle(.primary)
-
-                Spacer(minLength: 12)
-
-                if code == selection {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.tint)
-                        // The trait below says this to VoiceOver already.
-                        .accessibilityHidden(true)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .accessibilityAddTraits(code == selection ? [.isSelected] : [])
-    }
-
-    /// Matches on the whole label, so "zloty", "PLN" and "Polish" all find the
-    /// same row.
-    private func matches(_ codes: [String]) -> [String] {
-        let term = query.trimmingCharacters(in: .whitespaces)
-        guard !term.isEmpty else { return codes }
-
-        return codes.filter {
-            ExpenseFormView.currencyLabel($0).localizedCaseInsensitiveContains(term)
         }
     }
 }

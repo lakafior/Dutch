@@ -87,16 +87,18 @@ recorded.
 | 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
 | 12 | Shipped | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | Cent-weights in the weighting that already existed — no model version, no promote, and an older build divides it correctly rather than falling back. | A tip is no longer separable from the items once saved; it reopens folded in |
 | 16 | Shipped | [Several people paid](#16-several-people-paid) | Several payers on one trip through the form, saved as one ordinary expense each. | The workaround being exactly correct is what made it cheap: the app performs it. No model change, no calculator change, nothing new for an old build to miss. | Buys entry convenience, not a tidier log — you still get one row per payer |
-| 19 | Not started | [The Nearby button](#19-the-nearby-button) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalPointsOfInterestRequest`, not `MKLocalSearch.Request` — the latter searches for text. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Must degrade quietly when roaming is off. | A location permission prompt, at the worst possible moment |
-| 20 | Not started | [The currency, from the country the chosen place is in](#20-the-currency-from-the-country-the-chosen-place-is-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, and the country comes free from the picked `MKMapItem`, so no `CLGeocoder`. The trap is carrying the previous country's *rate* across; `onChange(of: currencyCode)` already handles it, so let it run. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
-| 21 | Not started | [The place on the expense](#21-the-place-on-the-expense) | The chosen name and its coordinates, stored on the expense; the row in the form opens the pin in Apple Maps. | A pin glyph marks the row in the log, and the name appears in words only once the title no longer says it. Grouping the log by place is still open — the log is already grouped by day. | Dutch 8 and Dutch 9, each with a promote of its own; **12** and **16** shipped without a model version, so there was nothing to pair with. **Dutch 9 is not promoted yet.** A shared place doesn't come back out, so it needs **19**'s explicit tap, plus a privacy-label line |
+| 26 | Shipped | [The order of the expense form](#26-the-order-of-the-expense-form) | Details drop below Paid By and Split Among; the currency becomes a control on the amount; a tip can be a flat sum. | The form put paperwork before people — six rows nobody touches sat above the two questions an expense turns on. The rate and the `savesAs` footer stay beside the figure they qualify. `Tip` is two cases in DutchKit, mirroring `RowShare`. | The flat sum is deliberately uncapped where a percentage is capped at 100% — no currency-free bound exists, so the *Saves as…* footer is the check |
+| 27 | Not started | [Split with…](#27-split-with-the-two-person-group-in-one-step) | One step from the group list to a two-person group, named and identified, straight onto the expense form. | The standing answer to **An expense with no group** — charge less for the ceremony rather than add an entity that contradicts the app. No Contacts framework: names come from the rosters already on the device. | It is the flow that meets the paywall — the free tier is one created group, so the second use of a one-tap create is a paywall over a coffee |
+| 19 | Shipped | [The Nearby button](#19-the-nearby-button) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalPointsOfInterestRequest`, not `MKLocalSearch.Request` — the latter searches for text. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Degrades quietly when roaming is off. | Off by default, so the permission prompt only ever follows a switch in Settings |
+| 20 | Shipped | [The currency, from the country the chosen place is in](#20-the-currency-from-the-country-the-chosen-place-is-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, and the country comes free from the picked `MKMapItem`, so no `CLGeocoder`. The trap is carrying the previous country's *rate* across; `onChange(of: currencyCode)` already handles it, so let it run. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
+| 21 | Shipped | [The place on the expense](#21-the-place-on-the-expense) | The chosen name and its coordinates, stored on the expense; the row in the form opens the pin in Apple Maps. | A pin glyph marks the row in the log, and the name appears in words only once the title no longer says it. Grouping the log by place is still open — the log is already grouped by day, and a spend-by-place overview is a charts screen, which is in **Not planned**. | **`Dutch 9` is initialized and promoted in neither schema.** Debug builds work; a TestFlight or App Store build that attaches a place fails mirroring outright, which takes sharing with it. Do it before one ships, not after. The two-build check against an older peer is also still outstanding |
 | 22 | Not started | [iPad and Mac](#22-ipad-and-mac) | "Designed for iPad" is a checkbox; native iPad, Catalyst and macOS are real work. | Sync needs nothing — CloudKit is per Apple Account. Two things bite: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | 432 KB for native iPad, being a saving already taken |
 | 24 | Not started | [An iMessage app](#24-an-imessage-app) | Assign a group to a group chat and manage its expenses inside Messages. | A target in this bundle, not a second app. The app group and `Intents/` already pay for most of it. May be worth more as a fix for the QR join dead-end than as a way to enter expenses. | App size — a second binary, plausibly past 2 MB with the widget. And whether an extension's writes export before the host app next launches is unverified |
 | 14 | Shipped | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | Measured: green failed at 2.22:1 on white, well under the 3:1 it needed. Light appearance now uses Apple's high-contrast pair. | Measured on both grounds the amount appears over. `Standing.tint` only — dark appearance already passed and was left alone. | Listing still doesn't claim it; that's metadata, not a build |
 | — | Not planned | [Receipt photos](#not-planned) | | Breaks all three constraints at once — CloudKit assets, sync weight, storage, and an image pipeline. | — |
 | — | Not planned | [Live exchange rates](#not-planned) | | Rates are frozen at entry deliberately; fetching them adds a network dependency and a cache in order to reintroduce the drift that decision removed. | — |
 | — | Not planned | [A charts tab](#not-planned) | | Swift Charts is system-provided, so technically free — and nobody opens it twice for a group with eleven expenses in it. | — |
-| — | Not planned | [An expense with no group](#not-planned) | | The need is real, the shape isn't. Answered instead by a **"Split with…"** fast path that makes a two-person group in one step. | — |
+| — | Not planned | [An expense with no group](#not-planned) | | The need is real, the shape isn't. Answered instead by **[27](#27-split-with-the-two-person-group-in-one-step)**, a **"Split with…"** fast path that makes a two-person group in one step. | — |
 | — | Not planned | [A backend, accounts, or login](#not-planned) | | The absence of one is the design. | — |
 
 ---
@@ -1110,6 +1112,203 @@ sums exactly and every device agrees, so the group always reconciles — an
 individual's share can just sit a minor unit from what a single record would
 have given them.
 
+### 26. The order of the expense form
+
+Asked for on 2026-09-05 as a reordering: amount before title, the currency code
+turned into a dropdown, a tip that can be a flat sum rather than a percentage,
+the roster laid out horizontally as initials, one field for an uneven split that
+works out for itself whether a number is a percentage or an amount, and Date,
+Category and Place moved to the bottom.
+
+**Built on 2026-09-05, all six requests answered.** What shipped is below; two
+things came out differently from the plan this entry first recorded, and both
+are marked where they happen.
+
+Six requests, and they do not share a verdict. What they share is one accurate
+observation underneath them: **the form currently puts paperwork before people.**
+`detailsSection` sits second, so on the ordinary path — a round of drinks, split
+evenly, today — the user scrolls past six rows they were never going to touch to
+reach the two questions the expense actually turns on. That is worth fixing.
+
+**What is already true.** The cursor starts in the amount with the decimal pad
+raised on every new expense, and has since the first-feedback batch. So "amount
+first" is a request about *reading* order, not about where typing begins. Moving
+the row is two lines; the only snag is that the **Nearby** button rides on the
+title row, and an icon-only button trailing the amount field would sit beside the
+currency code and read as part of it.
+
+**The reshape worth doing** keeps every argument `detailsSection` was built on
+and still answers the complaint, because the request itself splits that section
+rather than moving it whole — Tip goes *up*, Date and Category go *down*:
+
+> Amount · Rate · Title · Place · Tip → **Paid By** → **Split Among** →
+> **Details:** Date · Category
+
+**Two departures from the shape first written here.**
+
+**The currency stopped being a row.** It is a control inside the amount row —
+the code, then a chevron, opening the same searchable `CurrencyPicker` as a
+pushed destination. That is a row saved rather than a row moved, it puts the
+unit against the figure it qualifies, and it is what the original request was
+reaching for with "the currency symbol could be a button". It stays a *code* and
+not a symbol, which is the older decision and unaffected: `$` and `kr` are each
+several currencies. The push is driven by a flag rather than a `NavigationLink`,
+because a link in a `Form` claims the whole row — tapping the number to type in
+it would have pushed a screen.
+
+**The place did not go to Details.** It reads like a detail and it is not one:
+it exists only as the consequence of tapping **Nearby** on the title row, and
+the whole feature was made acceptable on the condition that the attachment is
+visible at the moment it is made. Two sections down it would be off screen at
+exactly that moment. It sits directly under the title instead, absent entirely
+until something is attached, so the ordinary form is no taller for it.
+
+And within the first section the tip went **after** the title rather than
+before. Amount and title are the two rows a person actually fills in; a tip most
+expenses never carry does not belong between them, which is this entry's own
+argument at a smaller scale.
+
+Currency and Rate stay with the amount because that is where the reasoning
+already put them: the rate is **required** once a foreign currency is chosen, and
+the `savesAsSummary` footer is the only place on the screen a mis-parsed
+separator or an upside-down rate can be caught before saving. Both belong beside
+the figure they qualify, not in a section three screens down. The date's reason
+for being visible — teaching a user adopting the app mid-trip that backdating
+exists — survives a move to the bottom, because it is still an uncollapsed row
+rather than a chevron. What it does not survive is being hidden, so whatever
+lands at the bottom stays open.
+
+**Tip as a flat amount was a real gap, and is now closed.** A 5 zł cover charge
+used to be enterable only by working out that it is 10.57% of a 47,30 bill,
+standing at a table. It stays arithmetic — the figure is still folded into the
+amount before the split, still rounded exactly once, still stored as nothing —
+so there was no model version and no promote in it.
+
+`Tip` is a two-case enum in DutchKit — `.rate(TipRate)` or `.flat(Money)` —
+deliberately shaped like `RowShare` in the form above it, and for the identical
+reason: `50` cannot mean half the bill on one expense and fifty złoty on the
+next, so the kind is a menu choice and the label always says which is in force.
+The menu mirrors a split row's exactly, down to *Use a Percentage* appearing
+only once there is a sum to undo. `TipRate` is untouched and still holds the
+percentage half.
+
+**The flat sum is uncapped, where a percentage is capped at 100%, and the
+asymmetry is deliberate.** A percentage can be capped because 1500% is
+meaningless in every currency — it is always a missed decimal point. A flat sum
+cannot be: 500 is an ordinary tip in forint and an absurd one in euro, and the
+type has no idea which it is holding. So the check moves to where the
+information is, which is the *Saves as…* footer — the same line that already
+stands between a mistyped **amount** and a wrong balance. Negative is still
+refused on both sides: a charge that reduces the bill is a discount, which is a
+different feature wearing this one's control.
+
+It cost one catalog sentence rather than three, because *"%@ tip included"*
+reads correctly with either a percentage or a money figure in it and a
+translator should not be handed the same sentence twice.
+
+**Rejected, with the reasons, so they are not re-litigated:**
+
+- **Tax and service charge as separate rows.** Three controls that do the same
+  thing to the same number, none of which is itemised anywhere because a tip is
+  not stored. It only becomes worth having if tips become stored and itemised,
+  which is a model version, a promote, and a different feature.
+- **A horizontal roster of initials.** The vertical rows are deliberate and the
+  reasoning is at the section: the payer wears the same coloured circle that
+  person wears on the members list, the group screen and every expense they paid
+  for, and a form that drew the same roster twice — once as colour, once as bare
+  text — made the reader check whether they were even the same people. Initials
+  are also not the only avatar any more; a member can wear an SF Symbol. And the
+  rows now carry controls a chip strip has nowhere to put: the per-payer
+  contribution field, the per-person share and exact-amount menu, and the live
+  slice preview. It reads well at three members and breaks at eight.
+- **One field that infers percentage from amount.** This is the sharpest-sounding
+  of the six and the one with evidence already against it. The footer
+  `shareOfRemainderExplanation` exists *because* somebody read `10%` beside
+  `50,00 zł` on a 250,00 bill and expected 20,00 — both numbers on screen, both
+  correct, and what was missing was which register the percentage was in. Making
+  the register something the app guesses is that failure with the explanation
+  removed. It is also not decidable while typing: a half-entered set never sums
+  to 100, and 100 is a legal amount. The friction underneath it is real, though —
+  reaching either number costs a menu — and that is the part worth taking.
+
+**The currency code becomes tappable, not a menu.** Pushing the existing
+`CurrencyPicker` from the amount row is a straight improvement. A `Menu` is not:
+the picker is searchable and sectioned by what the group has actually spent in,
+which was itself a fix for scrolling past a hundred codes, and a menu of the same
+list gives all of that back.
+
+*Cost: no model change and no promote — row order, one control, a
+`NavigationLink` turned into a flag-driven destination, and one small value type
+with ten tests. Three new catalog keys, all symbolic and translated. Not yet
+measured against the archive; it is a few dozen lines of view code plus `Tip`,
+and is expected to round to nothing. The risk was never size, it is that
+`GroupFlowUITests` drives this form entirely by name: `Title`, `Amount`,
+`payer-<name>` and `sharer-<name>`. Three of those are pinned
+`accessibilityIdentifier`s and survive any rewording, but **`Amount` is matched
+on the field's accessibility *label*** — so a row that moves is safe and a label
+that gets rewritten in passing silently breaks two tests.*
+
+### 27. "Split with…", the two-person group in one step
+
+The answer **An expense with no group** has carried in *Not planned* since it was
+first asked for, promoted here on 2026-09-05 so it has a number to be scheduled
+against rather than living as a rebuttal at the bottom of the page.
+
+The rebuttal stands and is not repeated here: a group-less expense would need a
+second sharing mechanism, would sit outside `GroupLimit` entirely, and settlement
+is defined over a roster. What the request describes is **the ceremony of
+creating a group, not the existence of one** — so the fix is to charge less for
+the ceremony.
+
+**Count what it costs today.** `NewGroupSheet` opens with **Create** disabled
+until a name is typed, and it wants a currency and an appearance. Then the group
+screen wants **Add Member**, twice. Then the expense form opens. Somebody
+splitting one dinner with one person invents a name they will never read again
+and fills three sheets before they reach the number they opened the app for.
+**Split with…** collapses that to the other person's name and one tap, landing
+directly on the expense form.
+
+**The name is derived, not demanded.** This is the only rule the fast path has to
+break, and it is worth being precise that it breaks it *only here* — the ordinary
+sheet keeps its disabled **Create**, because a group somebody will live in for a
+fortnight deserves a name they chose. A two-person group gets one from the other
+person's name, and from the place if **19** is switched on. `createGroup` already
+takes the name as a parameter and already falls back to `Locale.current.currency`
+and to an appearance derived from the group's id, so nothing in the store
+changes.
+
+**No Contacts framework, and this is a decision rather than an omission.** The
+obvious reading of "Split with…" is a contact picker, which would put a
+permission prompt and a privacy-label line in front of the one flow whose entire
+justification is that it has no friction — in an app that has never asked for
+Contacts and whose README says so. The names come from a text field and, better,
+from the rosters of the groups this device already has: the people you split with
+are overwhelmingly the people you have already split with. Zero permission, zero
+bytes, and nothing added to `PrivacyInfo.xcprivacy`.
+
+**Identity comes free here, and this is the only flow where it can.** Everywhere
+else the app cannot know which member the user is, which is why *Who am I in this
+group* exists and why `ExpenseDefaults.me` falls back to a tap. In a group of two
+created by one of them, the creator is known by construction — so the fast path
+calls `rememberMe` on their row as it writes it, and the first balance already
+reads *You owe* instead of naming the user in the third person.
+
+**The cost that is not bytes: this is the flow that meets the paywall.**
+`GroupLimit.freeCreatedGroups` is **1**. Making a group one tap makes reaching
+the limit one tap, and the second **Split with…** a person ever taps is a
+paywall. That is not an argument against building it — the limit deliberately
+falls on the organiser deciding at a keyboard rather than on the person scanning
+a code at a table, and this flow is unambiguously the former. But it changes what
+the paywall interrupts, from "you are setting up your third trip" to "you are
+splitting a coffee", and `resumeCreateAfterPaywall` in `GroupListView` is the
+path that has to keep working through it. Worth deciding on purpose whether a
+two-person group is the same product as a trip, before the first review says it
+isn't.
+
+*Cost: zero bytes beyond one sheet, no model change, no promote, no new
+framework and no new permission. Everything it writes — a group, two `Person`
+rows, and one identity key — the app already writes today.*
+
 ---
 
 ## Waiting on a decision, not on space
@@ -1126,6 +1325,12 @@ of the decisions is about bytes. The first three turned out not to be three
 decisions either — they share a single tap, and are written up below as one
 batch rather than as three entries that would each have to answer the same
 permission question separately.
+
+**Three of the four have since shipped**, and the heading is kept because the
+reasoning under it is what was decided rather than a queue of what is left:
+**19–21** landed together on 2026-09-04, off by default, and their entry now
+carries the one thing still outstanding — the `Dutch 9` promote. Only **22** is
+still a decision, and it is a decision about a sentence in the README.
 
 ### 19–21. Nearby: one tap, three consequences
 
@@ -1816,7 +2021,9 @@ What the request is actually describing is the ceremony of creating a group, not
 the existence of one. The answer is a **"Split with…"** fast path that makes a
 two-person group in a single step with a name already filled in. Zero model
 change, and it fixes the friction rather than adding an entity that contradicts
-the rest of the app.
+the rest of the app. That answer is now **[27](#27-split-with-the-two-person-group-in-one-step)**
+in *Next*, with a number of its own, so what stays *not planned* here is the
+group-less expense and not the need behind it.
 
 **A backend, accounts, or login.** The absence of one is the design.
 
