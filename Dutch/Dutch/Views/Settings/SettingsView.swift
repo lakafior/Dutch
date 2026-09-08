@@ -60,6 +60,10 @@ struct SettingsView: View {
     @State private var isRequestingLocation = false
     @State private var restoreMessage: String?
 
+    /// The paywall, opened from Settings rather than only from the group list.
+    /// See the note on `unlimited`.
+    @State private var showingPaywall = false
+
     var body: some View {
         NavigationStack {
             Form {
@@ -80,7 +84,15 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView(reachedLimit: false)
+            }
             .task {
+                // The price comes from the App Store, so this screen has to ask
+                // for it too: Settings can be the first thing opened on a fresh
+                // install, before the group list's own `load()` has answered.
+                await purchases.load()
+
                 await notifier.refreshAuthorization()
                 wantsNotifications = notifier.isEnabled
 
@@ -261,12 +273,41 @@ struct SettingsView: View {
 
     // MARK: - Purchase
 
+    /// The app's one unconditional route to the purchase, and it has to stay
+    /// unconditional.
+    ///
+    /// The group list's row is the nicer entry point but it is conditional
+    /// twice over: it hides once the purchase lands, and it hides while the
+    /// list is empty, because the empty state's `ContentUnavailableView` is an
+    /// overlay drawn across the list the row would sit in. The two together
+    /// mean a fresh install shows no purchase anywhere until a group exists —
+    /// which is exactly how 1.1.7 was rejected under guideline 2.1(b) on
+    /// 2026-09-08: App Review installs the app, looks for the In-App Purchase,
+    /// and does not find one. Settings is reachable from the toolbar in every
+    /// state, including that one. Don't put a condition on this section.
     @ViewBuilder
     private var unlimited: some View {
-        Section {
-            if purchases.hasUnlimitedGroups {
+        if purchases.hasUnlimitedGroups {
+            Section {
                 LabeledContent("Dutch Unlimited") { Text("Purchased") }
-            } else {
+            }
+        } else {
+            Section {
+                Button {
+                    showingPaywall = true
+                } label: {
+                    HStack {
+                        Label("Dutch Unlimited", systemImage: "infinity")
+                        Spacer()
+                        // Absent until the App Store answers, rather than a
+                        // price written in Swift — see `PurchaseStore.product`.
+                        if let price = purchases.product?.displayPrice {
+                            Text(price)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 // Restore lives here as well as on the group list. The list's
                 // version disappears the moment the purchase lands, which is
                 // correct there and leaves somebody whose purchase simply
@@ -276,6 +317,8 @@ struct SettingsView: View {
                     Task { await restore() }
                 }
                 .disabled(purchases.isWorking)
+            } footer: {
+                Text(.pricingDescription)
             }
         }
     }

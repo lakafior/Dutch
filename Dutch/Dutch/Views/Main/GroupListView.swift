@@ -180,11 +180,13 @@ struct GroupListView: View {
 
                 archiveSection
 
-                // The always-available way in. Without it the only route to
-                // "Restore Purchases" would be to first get blocked by the
-                // limit, which is a bad experience for someone whose purchase
-                // simply hasn't synced yet — and something App Review checks
-                // for. Disappears once the purchase is in.
+                // A way in that doesn't require getting blocked by the limit
+                // first, for someone whose purchase simply hasn't synced yet.
+                // Not *the* way in, despite what this comment used to claim:
+                // it is hidden while the list is empty — the empty state is an
+                // overlay across this list — so on a fresh install it shows
+                // nothing at all, which is how 1.1.7 was rejected under 2.1(b).
+                // `SettingsView.unlimited` is the unconditional route; keep it.
                 if !purchases.hasUnlimitedGroups && !groups.isEmpty {
                     Section {
                         Button {
