@@ -1759,6 +1759,16 @@
         }
       }
     },
+    "Couldn't Change Access" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się zmienić dostępu"
+          }
+        }
+      }
+    },
     "Couldn't Join" : {
       "localizations" : {
         "pl" : {
@@ -2254,6 +2264,16 @@
         }
       }
     },
+    "Expense Group" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grupa wydatków"
+          }
+        }
+      }
+    },
     "Expenses" : {
       "localizations" : {
         "pl" : {
@@ -2417,6 +2437,16 @@
         }
       }
     },
+    "Join %@ on Dutch to split expenses together." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dołącz do grupy „%@” w Dutch, aby wspólnie dzielić wydatki."
+          }
+        }
+      }
+    },
     "Join a Group" : {
       "localizations" : {
         "pl" : {
@@ -2537,6 +2567,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy, a gdy żadnego nie znajdzie, ulicę, na której jesteś. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki czegoś nie wybierzesz."
+          }
+        }
+      }
+    },
+    "Manage Access" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zarządzaj dostępem"
           }
         }
       }
@@ -2799,13 +2839,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anyone with Dutch installed can scan this to join. If someone hasn't got the app yet, show them the App Store code first. Use Invite People to choose people yourself instead."
+            "value" : "Anyone with Dutch installed can scan this to join, or open the link you send them. If someone hasn't got the app yet, show them the App Store code first."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Każdy, kto ma zainstalowany Dutch, może zeskanować ten kod, aby dołączyć. Jeśli ktoś nie ma jeszcze aplikacji, pokaż mu najpierw kod do App Store. Użyj opcji „Zaproś ludzi”, jeśli chcesz wybrać ich samodzielnie."
+            "value" : "Każdy, kto ma zainstalowany Dutch, może zeskanować ten kod lub otworzyć wysłany link, aby dołączyć. Jeśli ktoś nie ma jeszcze aplikacji, pokaż mu najpierw kod do App Store."
           }
         }
       }
@@ -2941,6 +2981,7 @@
       }
     },
     "OK" : {
+      "extractionState" : "stale",
       "localizations" : {
         "pl" : {
           "stringUnit" : {
@@ -3267,13 +3308,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Only people you invite can join, so scanning this code won't work on its own. Use Invite People, and allow anyone with the link from there."
+            "value" : "Only people you invite can join, so scanning this code or opening the link won't work on its own. Use Invite People, and allow anyone with the link from there."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dołączyć mogą tylko osoby, które zaprosisz, więc samo zeskanowanie tego kodu nie zadziała. Użyj opcji „Zaproś ludzi” i zezwól tam na dołączanie każdemu, kto ma link."
+            "value" : "Dołączyć mogą tylko osoby, które zaprosisz, więc samo zeskanowanie tego kodu ani otwarcie linku nie zadziała. Użyj opcji „Zaproś ludzi” i zezwól tam na dołączanie każdemu, kto ma link."
           }
         }
       }
@@ -3488,6 +3529,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nikt"
+          }
+        }
+      }
+    },
+    "Send Link" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyślij link"
           }
         }
       }

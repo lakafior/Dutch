@@ -7,11 +7,19 @@ import CoreData
 import SwiftUI
 
 /// Shows a group's invitation: a QR code carrying the CloudKit share URL, the
-/// word sequence for confirming it out loud, and the system invite sheet.
+/// word sequence for confirming it out loud, and a plain link to send.
 ///
 /// The QR encodes the **share URL**, not the word sequence. Without a server
 /// there is nothing that could turn three words back into a group, so the words
 /// are a label and the URL is the thing that actually grants access.
+///
+/// Two ways out of this screen and they are deliberately unequal. Scanning the
+/// code and receiving the link are the same act — the share is open to whoever
+/// holds the URL — so the primary button is a bare `ShareLink` with nothing
+/// attached to it. `UICloudSharingController`, which used to be that button,
+/// carries a participant list, an access picker and a **Stop Sharing** that
+/// revokes the group for everyone; it now sits behind **Manage Access**, owner
+/// only, below the fold. See `invitationAction` and `manageAccess`.
 struct ShareGroupView: View {
     let group: ExpenseGroup
 
@@ -19,8 +27,11 @@ struct ShareGroupView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var phase: Phase = .preparing
-    @State private var showingInviteSheet = false
+    /// Presents the *management* sheet, not an invitation. See `manageAccess`.
+    @State private var showingManageAccess = false
     @State private var showingAppStoreCode = false
+    /// A change the owner made in the management sheet that CloudKit refused.
+    @State private var manageAccessError: String?
     /// Built on first disclosure rather than alongside the join code, because
     /// most invitations are shown to people who already have the app and would
     /// never pay for it. Cached here so collapsing and reopening is free.
@@ -153,15 +164,7 @@ struct ShareGroupView: View {
                     .padding(.horizontal)
                 }
 
-                Button {
-                    showingInviteSheet = true
-                } label: {
-                    Label("Invite People", systemImage: "person.badge.plus")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.horizontal)
+                invitationAction(share: share)
 
                 appStoreDisclosure(share: share)
 
@@ -184,13 +187,157 @@ struct ShareGroupView: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
+
+                // Last on the screen on purpose: everything above it is the
+                // invitation, and this is the only control that can take one
+                // away.
+                manageAccess(share: share)
+                    .padding(.bottom, 8)
             }
             .padding(.top, 24)
         }
-        .sheet(isPresented: $showingInviteSheet) {
-            CloudSharingSheet(share: share, container: container)
+        .sheet(isPresented: $showingManageAccess) {
+            CloudSharingSheet(
+                share: share,
+                container: container,
+                onSaveShare: refresh,
+                onStopSharing: handleStopSharing,
+                onFailedToSave: { manageAccessError = $0.localizedDescription }
+            )
             .ignoresSafeArea()
         }
+        .alert(
+            "Couldn't Change Access",
+            isPresented: .init(
+                get: { manageAccessError != nil },
+                set: { if !$0 { manageAccessError = nil } }
+            ),
+            presenting: manageAccessError
+        ) { _ in
+            Button("OK", role: .cancel) { manageAccessError = nil }
+        } message: { message in
+            Text(message)
+        }
+    }
+
+    // MARK: - Sending an invitation
+
+    /// Whether this group is ours to administer.
+    ///
+    /// A member who joined by invitation can still hand the link on — the share
+    /// is open to anyone holding it, so passing it along is an ordinary thing to
+    /// do at a table — but only the owner gets the management sheet.
+    private var isOwner: Bool { !GroupLimit.isJoined(group) }
+
+    /// The primary action: hand somebody the link.
+    ///
+    /// This deliberately does **not** go through `UICloudSharingController`. That
+    /// sheet exists to add named participants so the URL will work for them, and
+    /// `makeScannable` already made the URL work for everybody — so its whole
+    /// contribution to an invitation is a screen carrying a participant list, an
+    /// access picker and a **Stop Sharing** button that revokes the group for
+    /// every member at once. `ShareLink` sends the same URL through Messages,
+    /// Mail or AirDrop with none of that attached, and the recipient's join is
+    /// identical to a scan.
+    ///
+    /// The exception is a group the owner closed to invitations. Its URL
+    /// authorises nobody, so a link would be an invitation that cannot be
+    /// accepted, and the system sheet — which adds the recipient as it sends —
+    /// is the only thing that can invite at all. Non-owners get no button there,
+    /// because they have nothing they could offer.
+    @ViewBuilder
+    private func invitationAction(share: CKShare) -> some View {
+        if share.publicPermission == .none {
+            if isOwner {
+                Button {
+                    showingManageAccess = true
+                } label: {
+                    Label("Invite People", systemImage: "person.badge.plus")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal)
+            }
+        } else if let url = share.url {
+            ShareLink(
+                item: url,
+                subject: Text(group.name ?? "Expense Group"),
+                message: Text(invitationMessage)
+            ) {
+                Label("Send Link", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.horizontal)
+        }
+    }
+
+    /// What a bare `icloud.com/share/…` URL looks like without it: spam.
+    private var invitationMessage: String {
+        let name = group.name ?? String(localized: "Expense Group")
+        return String(localized: "Join \(name) on Dutch to split expenses together.")
+    }
+
+    // MARK: - Managing access
+
+    /// The system sharing sheet, demoted to a destination.
+    ///
+    /// Everything destructive about sharing lives behind this one row: removing
+    /// a participant, and **Stop Sharing**, which deletes the `CKShare` and takes
+    /// the group off every member's device — their copy only ever mirrored the
+    /// owner's zone, so revoking it leaves them nothing. That is a real thing an
+    /// owner sometimes wants, and it is not a thing anybody should reach while
+    /// trying to send an invitation, which is what it was one tap from before.
+    ///
+    /// Hidden for a member who joined: the sheet would offer them "Remove Me"
+    /// dressed as group administration, and
+    /// `cloudSharingControllerDidSaveShare` writes to the private store, which
+    /// isn't where their copy of the group lives.
+    ///
+    /// Also hidden when the group is invitation-only, because `invitationAction`
+    /// is then already presenting this same sheet as the primary button.
+    @ViewBuilder
+    private func manageAccess(share: CKShare) -> some View {
+        if isOwner, share.publicPermission != .none {
+            Button {
+                showingManageAccess = true
+            } label: {
+                Label("Manage Access", systemImage: "person.2.badge.gearshape")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
+    }
+
+    /// Adopts the share as CloudKit saved it.
+    ///
+    /// Only the permission can have changed here, never the URL, so the QR code
+    /// is carried across rather than re-rasterised — but the captions below it
+    /// are told from `publicPermission`, and they were reading a stale copy.
+    private func refresh(_ share: CKShare) {
+        guard case .ready(_, let container, let qrCode) = phase else { return }
+        phase = .ready(share: share, container: container, qrCode: qrCode)
+    }
+
+    /// The owner stopped sharing, so there is no invitation left to show.
+    ///
+    /// Clearing the cached URL is the part that is easy to miss: `GroupListView`
+    /// reads `cloudKitShareURL` to decide whether to mark a group as shared, and
+    /// nothing else ever writes it back to `nil`. Left alone, a group the owner
+    /// closed keeps its shared badge for good.
+    ///
+    /// Safe to act on without first confirming the share is really gone, which
+    /// would be racy anyway: if this ever fires when sharing did *not* stop,
+    /// reopening this screen calls `prepareShare`, which finds the share still
+    /// there and caches its URL again. The cost of a false positive is a badge
+    /// missing until the next visit.
+    private func handleStopSharing() {
+        group.cloudKitShareURL = nil
+        try? context.save()
+        showingManageAccess = false
+        dismiss()
     }
 
     // MARK: - App Store code
@@ -309,7 +456,7 @@ struct ShareGroupView: View {
         #endif
 
         do {
-            let (share, container) = try await CloudSharingService.share(for: group)
+            let (share, container) = try await resolveShare()
 
             // Cache the URL so the group list can show that it's shared
             // without re-hitting CloudKit.
@@ -326,6 +473,25 @@ struct ShareGroupView: View {
         } catch {
             phase = .failed(error.localizedDescription)
         }
+    }
+
+    /// The share to display, created only if this group is ours.
+    ///
+    /// `CloudSharingService.share(for:)` falls back to `container.share(_:to:)`
+    /// when a group has no share yet, and that call is meaningless for a group
+    /// that arrived from somebody else's invitation — it would ask Core Data to
+    /// create a zone for a record living in the shared store. A joined group
+    /// always has a share already, since that is how it got here, so looking one
+    /// up is the whole job; if it is somehow missing, saying so beats inventing
+    /// a second share for a group we don't own.
+    private func resolveShare() async throws -> (CKShare, CKContainer) {
+        guard GroupLimit.isJoined(group) else {
+            return try await CloudSharingService.share(for: group)
+        }
+        guard let share = try CloudSharingService.existingShare(for: group) else {
+            throw CloudSharingService.SharingError.noShareAvailable
+        }
+        return (share, CKContainer(identifier: PersistenceController.cloudKitContainerIdentifier))
     }
 }
 
