@@ -152,8 +152,13 @@ struct PaywallView: View {
     /// facts that matter — what is unlocked, and that it happens once — to the
     /// surrounding text this button doesn't carry.
     private var buyAccessibilityLabel: String {
-        guard let price = purchases.product?.displayPrice else { return "Loading the price" }
-        return "Unlock unlimited groups for \(price), one-time purchase"
+        guard let price = purchases.product?.displayPrice else {
+            return String(localized: "Loading the price")
+        }
+        return String(
+            localized: "Unlock unlimited groups for \(price), one-time purchase",
+            comment: "VoiceOver label on the buy button. The placeholder is a storefront-formatted price."
+        )
     }
 
     // MARK: - Actions

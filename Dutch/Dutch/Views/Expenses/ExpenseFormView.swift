@@ -340,7 +340,7 @@ struct ExpenseFormView: View {
     /// Says which of the three the sheet is, so a duplicate can't be mistaken
     /// for an edit of the row it was opened from — the difference being whether
     /// the original survives.
-    private var navigationTitle: String {
+    private var navigationTitle: LocalizedStringResource {
         if isEditing { return "Edit Expense" }
         return isDuplicate ? "Duplicate Expense" : "Add Expense"
     }
@@ -1113,15 +1113,23 @@ struct ExpenseFormView: View {
                     )
                 }
 
-                // Absent entirely on an edit rather than disabled: an edit
-                // rewrites one record, so there is no state this could put the
-                // form into, and a permanently greyed switch invites the
-                // question of what would turn it on.
-                if allowsSeveralPayers {
-                    Toggle("Several people paid", isOn: severalPayersBinding(members))
-                        // Nothing to divide between one person.
-                        .disabled(members.count < 2)
-                }
+                // Offered everywhere, edits included. This was add-only at
+                // first, on the reasoning that an edit rewrites one record and
+                // has nowhere to put a second payer without silently creating
+                // a row. Two things answered that. The row is not silent —
+                // `payerFooter` names it before Save. And it can be dated
+                // correctly, which is only true because the form carries a
+                // date field: before it did, a payer added to last Tuesday's
+                // taxi would have landed in today's bucket.
+                //
+                // What it replaces is worse than a created row. Remembering
+                // afterwards that somebody else chipped in used to mean
+                // deleting the expense and entering two — on a shared group,
+                // exactly the delete-and-re-add churn that editing exists to
+                // prevent.
+                Toggle("Several people paid", isOn: severalPayersBinding(members))
+                    // Nothing to divide between one person.
+                    .disabled(members.count < 2)
             }
         } header: {
             Text("Paid By")
@@ -1402,22 +1410,6 @@ struct ExpenseFormView: View {
         return ExactSplit.plan(total: basis, fixed: fixed, sharing: sharing)
     }
 
-    /// Whether more than one payer can be chosen at all.
-    ///
-    /// Everywhere, edits included. This was add-only at first, on the reasoning
-    /// that an edit rewrites one record and has nowhere to put a second payer
-    /// without silently creating a row. Two things answered that. The row is
-    /// not silent — `payerFooter` names it before Save. And it can be dated
-    /// correctly, which is only true because the form carries a date field:
-    /// before it did, a payer added to last Tuesday's taxi would have landed in
-    /// today's bucket.
-    ///
-    /// What it replaces is worse than a created row. Remembering afterwards
-    /// that somebody else chipped in used to mean deleting the expense and
-    /// entering two — on a shared group, exactly the delete-and-re-add churn
-    /// that editing exists to prevent.
-    private var allowsSeveralPayers: Bool { true }
-
     /// The figure the contributions are laid against: the amount with the tip
     /// on it, still in the currency being typed.
     ///
@@ -1562,7 +1554,7 @@ struct ExpenseFormView: View {
             // One tap, and it means what it has always meant. Everything below
             // is reachable only once the toggle has said this expense is the
             // unusual kind.
-            guard severalPayers, allowsSeveralPayers else {
+            guard severalPayers else {
                 selectedPayers = [member]
                 payerAmounts = [:]
                 return

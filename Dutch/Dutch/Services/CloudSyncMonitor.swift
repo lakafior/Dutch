@@ -29,11 +29,12 @@ import Foundation
 /// Anything claiming otherwise would be a lie told by the UI, so the copy in
 /// `SyncStatusIndicator` says "synced", never "up to date".
 @MainActor
-final class CloudSyncMonitor: ObservableObject {
+@Observable
+final class CloudSyncMonitor {
     static let shared = CloudSyncMonitor(controller: .shared)
 
     /// Whether the container has a setup, import or export in flight.
-    @Published private(set) var isSyncing = false
+    private(set) var isSyncing = false
 
     /// When an import last finished successfully.
     ///
@@ -46,16 +47,17 @@ final class CloudSyncMonitor: ObservableObject {
     ///
     /// In the app group suite rather than `.standard` so the widget on the
     /// roadmap can say the same thing without a stack of its own.
-    @Published private(set) var lastSync: Date? {
-        didSet {
-            guard isEnabled, lastSync != oldValue else { return }
-            defaults.set(lastSync, forKey: Self.lastSyncKey)
-        }
-    }
+    ///
+    /// Persisted by `record`, its only writer, rather than by a `didSet`.
+    /// `@Observable` rewrites a tracked stored property into a computed one, so
+    /// a property observer on it is not something the macro can carry — and the
+    /// write has to survive, or the "Waiting for iCloud" cold-launch flash this
+    /// property exists to prevent comes back.
+    private(set) var lastSync: Date?
 
     /// The most recent failure, in words somebody can act on, or `nil` while
     /// everything is working.
-    @Published private(set) var problem: String?
+    private(set) var problem: String?
 
     /// Whether there is any mirroring to report on at all. False for the
     /// in-memory store used by tests and previews, where the status footer
@@ -77,14 +79,18 @@ final class CloudSyncMonitor: ObservableObject {
 
     private let controller: PersistenceController
     private let defaults: UserDefaults
-    private var observer: NSObjectProtocol?
+
+    /// Bookkeeping, not view state. `@Observable` tracks every stored `var` it
+    /// is not told to leave alone, and nothing below is read from a body.
+    @ObservationIgnored private var observer: NSObjectProtocol?
 
     /// Identifiers of events that have started and not yet ended.
-    private var inFlight: Set<UUID> = []
+    @ObservationIgnored private var inFlight: Set<UUID> = []
 
     /// The last failure per kind of event, so a successful import clears the
     /// import's complaint without also clearing an export that is still failing
     /// — a full iCloud account can read fine and refuse every write.
+    @ObservationIgnored
     private var problems: [NSPersistentCloudKitContainer.EventType: String] = [:]
 
     init(
@@ -97,13 +103,9 @@ final class CloudSyncMonitor: ObservableObject {
 
         guard isEnabled else { return }
 
-        // Read straight through, past the `didSet`, which would otherwise write
-        // back what it just read on every launch.
-        _lastSync = Published(
-            initialValue: defaults.object(forKey: Self.lastSyncKey) as? Date
-        )
+        lastSync = defaults.object(forKey: Self.lastSyncKey) as? Date
 
-        // Delivered on the main queue so the published properties are written
+        // Delivered on the main queue so the observed properties are written
         // where they are read. The event carries its own start and end, so this
         // is the whole of the bookkeeping.
         observer = NotificationCenter.default.addObserver(
@@ -189,8 +191,12 @@ final class CloudSyncMonitor: ObservableObject {
             // Only an import can have brought something new down. A successful
             // export means this device's changes left, which is not what
             // "synced" is being read to mean on the group list.
-            if event.type == .import {
+            // Persisted here rather than in a property observer — see `lastSync`.
+            // Guarded on a change for the reason the old `didSet` was: an
+            // import that brought nothing new down should not rewrite the key.
+            if event.type == .import, lastSync != ended {
                 lastSync = ended
+                defaults.set(ended, forKey: Self.lastSyncKey)
             }
         } else {
             problems[event.type] = event.error.map(Self.describe)

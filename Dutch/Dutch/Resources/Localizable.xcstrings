@@ -112,6 +112,17 @@
         }
       }
     },
+    "%@ has joined but hasn't picked their name from this list yet." : {
+      "comment" : "Footer under the member list. The placeholder is one name.",
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ dołączył(a), ale nie wybrał(a) jeszcze swojego imienia z tej listy."
+          }
+        }
+      }
+    },
     "%@ has no members yet. Add one in Dutch first." : {
       "localizations" : {
         "pl" : {
@@ -134,6 +145,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Grupa %1$@ wydała %2$@. Otwórz Dutch i przytrzymaj swoje imię, aby poznać własny bilans."
+          }
+        }
+      }
+    },
+    "%@ have joined but haven't picked their names from this list yet." : {
+      "comment" : "Footer under the member list. The placeholder is a formatted list of names.",
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ dołączyli, ale nie wybrali jeszcze swoich imion z tej listy."
           }
         }
       }
@@ -172,6 +194,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ z całości pozostaje nierozliczone."
+          }
+        }
+      }
+    },
+    "%@ paid %@" : {
+      "comment" : "A settling-up payment in the expense log. Both placeholders are member names.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ paid %2$@"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oddał(a) — odbiorca: %2$@"
           }
         }
       }
@@ -277,6 +316,53 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, joined on iCloud" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, dołączono przez iCloud"
+          }
+        }
+      }
+    },
+    "%@, open in Maps" : {
+      "comment" : "VoiceOver label for the place attached to an expense. The argument is the place's name.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, open in Maps"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, otwórz w Mapach"
+          }
+        }
+      }
+    },
+    "%@, you" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, Ty"
+          }
+        }
+      }
+    },
+    "%@, you, linked to iCloud" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, Ty, połączono z iCloud"
           }
         }
       }
@@ -624,57 +710,6 @@
         }
       }
     },
-    "tipAmountExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A flat sum added on top of the amount before it is split, so everyone shares it. Leave it blank to go back to a percentage."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stała kwota doliczana do kwoty przed podziałem, więc dzielą ją wszyscy. Zostaw puste, aby wrócić do procentów."
-          }
-        }
-      }
-    },
-    "tipAmountMenuItem" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tip Amount…"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kwota napiwku…"
-          }
-        }
-      }
-    },
-    "tipAmountTitle" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tip Amount"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kwota napiwku"
-          }
-        }
-      }
-    },
     "• %@ — %@ (%@), paid by %@" : {
       "localizations" : {
         "en" : {
@@ -784,6 +819,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dodaj ${amount} za ${title} do ${group}"
+          }
+        }
+      }
+    },
+    "Add a member to this group first." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Najpierw dodaj osobę do tej grupy."
           }
         }
       }
@@ -1124,6 +1169,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Użyj procentów"
+          }
+        }
+      }
+    },
+    "Can't Find You" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Find You"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można ustalić położenia"
+          }
+        }
+      }
+    },
+    "Can't Look Around" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't Look Around"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie można sprawdzić okolicy"
           }
         }
       }
@@ -1739,6 +1816,22 @@
         }
       }
     },
+    "Currency from Location" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Currency from Location"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waluta z lokalizacji"
+          }
+        }
+      }
+    },
     "Custom Share" : {
       "localizations" : {
         "pl" : {
@@ -1870,6 +1963,16 @@
         }
       }
     },
+    "Duplicate Expense" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplikuj wydatek"
+          }
+        }
+      }
+    },
     "Dutch" : {
       "localizations" : {
         "pl" : {
@@ -1934,6 +2037,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Każda z nich otrzyma własny wydatek."
+          }
+        }
+      }
+    },
+    "Edit Expense" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edytuj wydatek"
           }
         }
       }
@@ -2151,6 +2264,16 @@
         }
       }
     },
+    "Get a notification when someone else adds an expense to one of your groups. Dutch has no server of its own, so these arrive when iCloud delivers the change — usually within a minute, and not at all while the app is force-quit." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otrzymuj powiadomienie, gdy ktoś inny doda wydatek do jednej z Twoich grup. Dutch nie ma własnego serwera, więc powiadomienia docierają wtedy, gdy iCloud dostarczy zmianę — zwykle w ciągu minuty, i wcale, gdy aplikacja jest zamknięta siłowo."
+          }
+        }
+      }
+    },
     "Group" : {
       "localizations" : {
         "pl" : {
@@ -2341,6 +2464,83 @@
         }
       }
     },
+    "Loading the price" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczytywanie ceny"
+          }
+        }
+      }
+    },
+    "location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja"
+          }
+        }
+      }
+    },
+    "Location Is Off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location Is Off"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja wyłączona"
+          }
+        }
+      }
+    },
+    "locationDeniedExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location is turned off for Dutch in Settings."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalizacja jest wyłączona dla Dutch w Ustawieniach."
+          }
+        }
+      }
+    },
+    "locationExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch reads where you are only when you tap Nearby on an expense — once, to suggest the places around you, or the street you are on when it finds none. Nothing runs in the background, and nothing is saved to a group unless you pick one."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy, a gdy żadnego nie znajdzie, ulicę, na której jesteś. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki czegoś nie wybierzesz."
+          }
+        }
+      }
+    },
     "Mark %@'s %@ payment to %@ as paid" : {
       "localizations" : {
         "en" : {
@@ -2429,6 +2629,140 @@
         }
       }
     },
+    "Nearby" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu"
+          }
+        }
+      }
+    },
+    "Nearby Places" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby Places"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miejsca w pobliżu"
+          }
+        }
+      }
+    },
+    "nearbyAddressExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No cafés or restaurants within a short walk, so this is the street you are on. You can edit it like any other title."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu nie ma kawiarni ani restauracji, więc to ulica, na której jesteś. Możesz ją edytować jak każdy inny tytuł."
+          }
+        }
+      }
+    },
+    "nearbyNoFixExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your phone couldn't work out where it is. This needs a moment outdoors, or a location that isn't blocked — the title field still works as it always has."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telefon nie ustalił swojego położenia. Potrzeba chwili na zewnątrz albo odblokowanej lokalizacji — pole tytułu działa tak jak zawsze."
+          }
+        }
+      }
+    },
+    "nearbyNothingFoundExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No cafés or restaurants within a short walk. The title field below still works as it always has."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W pobliżu nie ma kawiarni ani restauracji. Pole tytułu działa tak jak zawsze."
+          }
+        }
+      }
+    },
+    "nearbyPermissionExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch needs permission to read where you are before it can suggest places nearby."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch potrzebuje dostępu do lokalizacji, aby zaproponować miejsca w pobliżu."
+          }
+        }
+      }
+    },
+    "nearbySearching" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking around"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukanie w pobliżu"
+          }
+        }
+      }
+    },
+    "nearbyUnavailableExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch couldn't reach Apple Maps. This needs a connection, so it won't work with roaming off — type a title instead."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch nie może połączyć się z Mapami Apple. Ta funkcja wymaga połączenia z internetem, więc nie zadziała przy wyłączonym roamingu — wpisz tytuł ręcznie."
+          }
+        }
+      }
+    },
     "New Expense" : {
       "localizations" : {
         "pl" : {
@@ -2496,6 +2830,16 @@
         }
       }
     },
+    "No previous purchase was found for this Apple Account." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie znaleziono wcześniejszego zakupu dla tego konta Apple."
+          }
+        }
+      }
+    },
     "None" : {
       "localizations" : {
         "pl" : {
@@ -2522,6 +2866,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nie teraz"
+          }
+        }
+      }
+    },
+    "Nothing Nearby" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing Nearby"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nic w pobliżu"
           }
         }
       }
@@ -2566,6 +2926,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Powiadomienia"
+          }
+        }
+      }
+    },
+    "Notifications are turned off for Dutch in Settings." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Powiadomienia dla Dutch są wyłączone w Ustawieniach."
           }
         }
       }
@@ -2617,12 +2987,44 @@
         }
       }
     },
+    "Open Location Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Location Settings"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz ustawienia lokalizacji"
+          }
+        }
+      }
+    },
     "Open Notification Settings" : {
       "localizations" : {
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Otwórz ustawienia powiadomień"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz Ustawienia"
           }
         }
       }
@@ -2683,6 +3085,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zapłacone przez"
+          }
+        }
+      }
+    },
+    "Paid by %@" : {
+      "comment" : "VoiceOver reading of who paid for an expense. The placeholder is a member name.",
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapłacone przez: %@"
           }
         }
       }
@@ -2818,6 +3231,16 @@
         }
       }
     },
+    "Purchased" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kupione"
+          }
+        }
+      }
+    },
     "Purchases are turned off on this device. Check Screen Time restrictions." : {
       "localizations" : {
         "pl" : {
@@ -2946,6 +3369,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usunąć wybranych członków (%lld)?"
+          }
+        }
+      }
+    },
+    "Remove Place" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Place"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuń miejsce"
           }
         }
       }
@@ -4172,6 +4611,37 @@
         }
       }
     },
+    "Synced %@" : {
+      "comment" : "The placeholder is an already-localized relative time, e.g. '2 hours ago'.",
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zsynchronizowano %@"
+          }
+        }
+      }
+    },
+    "Synced just now" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zsynchronizowano przed chwilą"
+          }
+        }
+      }
+    },
+    "Syncing with iCloud…" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronizowanie z iCloud…"
+          }
+        }
+      }
+    },
     "That group isn't on this device." : {
       "localizations" : {
         "pl" : {
@@ -4209,6 +4679,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "To więcej niż pozostałe %@ do zapłaty."
+          }
+        }
+      }
+    },
+    "That member is no longer in this group." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tej osoby nie ma już w tej grupie."
           }
         }
       }
@@ -4452,6 +4932,57 @@
         }
       }
     },
+    "tipAmountExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A flat sum added on top of the amount before it is split, so everyone shares it. Leave it blank to go back to a percentage."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stała kwota doliczana do kwoty przed podziałem, więc dzielą ją wszyscy. Zostaw puste, aby wrócić do procentów."
+          }
+        }
+      }
+    },
+    "tipAmountMenuItem" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip Amount…"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kwota napiwku…"
+          }
+        }
+      }
+    },
+    "tipAmountTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip Amount"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kwota napiwku"
+          }
+        }
+      }
+    },
     "tipExplanation" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4583,6 +5114,16 @@
         }
       }
     },
+    "unknown" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nieznana osoba"
+          }
+        }
+      }
+    },
     "Unlock as many as you like with a single purchase." : {
       "localizations" : {
         "pl" : {
@@ -4605,6 +5146,17 @@
         }
       }
     },
+    "Unlock unlimited groups for %@, one-time purchase" : {
+      "comment" : "VoiceOver label on the buy button. The placeholder is a storefront-formatted price.",
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odblokuj nieograniczoną liczbę grup za %@, zakup jednorazowy"
+          }
+        }
+      }
+    },
     "unnamedGroup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4618,6 +5170,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Grupa"
+          }
+        }
+      }
+    },
+    "unnamedMember" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unnamed"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bez nazwy"
           }
         }
       }
@@ -4668,6 +5237,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wersja"
+          }
+        }
+      }
+    },
+    "Waiting for iCloud" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oczekiwanie na iCloud"
           }
         }
       }
@@ -4818,6 +5397,16 @@
         }
       }
     },
+    "Your purchase has been restored." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twój zakup został przywrócony."
+          }
+        }
+      }
+    },
     "youTheUser" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4831,336 +5420,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ty"
-          }
-        }
-      }
-    },
-    "location" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokalizacja"
-          }
-        }
-      }
-    },
-    "locationExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch reads where you are only when you tap Nearby on an expense — once, to suggest the places around you, or the street you are on when it finds none. Nothing runs in the background, and nothing is saved to a group unless you pick one."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch odczytuje Twoje położenie tylko wtedy, gdy dotkniesz przycisku „W pobliżu” przy wydatku — jednorazowo, aby zaproponować miejsca w okolicy, a gdy żadnego nie znajdzie, ulicę, na której jesteś. Nic nie działa w tle i nic nie jest zapisywane w grupie, dopóki czegoś nie wybierzesz."
-          }
-        }
-      }
-    },
-    "locationDeniedExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location is turned off for Dutch in Settings."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokalizacja jest wyłączona dla Dutch w Ustawieniach."
-          }
-        }
-      }
-    },
-    "nearbySearching" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Looking around"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Szukanie w pobliżu"
-          }
-        }
-      }
-    },
-    "nearbyNothingFoundExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No cafés or restaurants within a short walk. The title field below still works as it always has."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "W pobliżu nie ma kawiarni ani restauracji. Pole tytułu działa tak jak zawsze."
-          }
-        }
-      }
-    },
-    "nearbyPermissionExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch needs permission to read where you are before it can suggest places nearby."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch potrzebuje dostępu do lokalizacji, aby zaproponować miejsca w pobliżu."
-          }
-        }
-      }
-    },
-    "nearbyUnavailableExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch couldn't reach Apple Maps. This needs a connection, so it won't work with roaming off — type a title instead."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dutch nie może połączyć się z Mapami Apple. Ta funkcja wymaga połączenia z internetem, więc nie zadziała przy wyłączonym roamingu — wpisz tytuł ręcznie."
-          }
-        }
-      }
-    },
-    "Nearby" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nearby"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "W pobliżu"
-          }
-        }
-      }
-    },
-    "Nothing Nearby" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing Nearby"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nic w pobliżu"
-          }
-        }
-      }
-    },
-    "Location Is Off" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location Is Off"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokalizacja wyłączona"
-          }
-        }
-      }
-    },
-    "Open Settings" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Settings"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otwórz Ustawienia"
-          }
-        }
-      }
-    },
-    "Can't Look Around" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Can't Look Around"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie można sprawdzić okolicy"
-          }
-        }
-      }
-    },
-    "Nearby Places" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nearby Places"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Miejsca w pobliżu"
-          }
-        }
-      }
-    },
-    "Currency from Location" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Currency from Location"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waluta z lokalizacji"
-          }
-        }
-      }
-    },
-    "Open Location Settings" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Location Settings"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otwórz ustawienia lokalizacji"
-          }
-        }
-      }
-    },
-    "Remove Place" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove Place"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usuń miejsce"
-          }
-        }
-      }
-    },
-    "nearbyNoFixExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your phone couldn't work out where it is. This needs a moment outdoors, or a location that isn't blocked — the title field still works as it always has."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Telefon nie ustalił swojego położenia. Potrzeba chwili na zewnątrz albo odblokowanej lokalizacji — pole tytułu działa tak jak zawsze."
-          }
-        }
-      }
-    },
-    "Can't Find You" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Can't Find You"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie można ustalić położenia"
-          }
-        }
-      }
-    },
-    "nearbyAddressExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No cafés or restaurants within a short walk, so this is the street you are on. You can edit it like any other title."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "W pobliżu nie ma kawiarni ani restauracji, więc to ulica, na której jesteś. Możesz ją edytować jak każdy inny tytuł."
-          }
-        }
-      }
-    },
-    "%@, open in Maps" : {
-      "comment" : "VoiceOver label for the place attached to an expense. The argument is the place's name.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@, open in Maps"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@, otwórz w Mapach"
           }
         }
       }

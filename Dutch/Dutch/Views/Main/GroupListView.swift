@@ -42,11 +42,20 @@ struct GroupListView: View {
     /// the create that opened it.
     @ObservedObject private var purchases = PurchaseStore.shared
 
-    /// Drives the pull-to-refresh gesture and the status line under the list.
-    /// A singleton for the same reason `purchases` is: it describes the account
-    /// and the container, not this screen, and the detail screen pulls on the
-    /// same one.
-    @ObservedObject private var sync = CloudSyncMonitor.shared
+    /// Drives the pull-to-refresh gesture. A singleton for the same reason
+    /// `purchases` is: it describes the account and the container, not this
+    /// screen, and the detail screen pulls on the same one.
+    ///
+    /// A plain `let`, and deliberately not `@ObservedObject`. `body` calls
+    /// `refresh()` and reads no property off this, so under `@Observable` the
+    /// list registers no dependency on it at all. As an `ObservableObject` it
+    /// subscribed to `objectWillChange`, which `isSyncing` fires on every
+    /// event's start *and* end and `lastSync` on every import — so a first
+    /// sync re-ran this whole body, re-filtering `active` and `archived` and
+    /// re-diffing the `List`, for a value nothing here looks at.
+    /// `SyncStatusIndicator` holds its own reference and does read them, so it
+    /// still updates.
+    private let sync = CloudSyncMonitor.shared
 
     /// Path-based navigation so creating a group can push straight into it.
     @State private var path: [ExpenseGroup] = []
@@ -349,7 +358,7 @@ struct GroupListView: View {
             // The group was deleted, or the invitation was never accepted on
             // this device. Saying so beats a tap that appears to do nothing.
             router.destination = nil
-            errorMessage = "That group isn't on this device."
+            errorMessage = String(localized: "That group isn't on this device.")
             return
         }
 
@@ -495,7 +504,7 @@ private struct GroupRow: View {
     private func identity(memberCount: Int, expenseCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Text(group.name ?? "Unnamed")
+                Text(group.name ?? String(localized: .unnamedGroup))
                     .font(.headline)
 
                 if group.cloudKitShareURL != nil {
@@ -556,8 +565,12 @@ private struct GroupRow: View {
                     // visible.
                     .motionContentTransition(.numericText())
 
+                // `.caption` for the reason given in `MemberBalanceRow`: this
+                // is the wording the colour is redundant with. The two lines
+                // below share the slot, and move with it so the three branches
+                // stay the same size.
                 Text(standing?.caption(isMe: true) ?? "")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
 
             case .settled:
@@ -568,7 +581,7 @@ private struct GroupRow: View {
                 // Being square with everyone doesn't mean the group is done,
                 // and a row that stopped at "Settled up" hid that.
                 Text(pending == 0 ? "everyone's even" : "\(pending) to settle")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
 
             case nil:
@@ -578,7 +591,7 @@ private struct GroupRow: View {
                     .motionContentTransition(.numericText())
 
                 Text(pending == 0 ? "Settled up" : "\(pending) to settle")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(pending == 0 ? .secondary : .primary)
             }
         }

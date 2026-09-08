@@ -97,16 +97,19 @@ struct SettingsView: View {
             .onChange(of: nearby.isEnabled) { _, enabled in
                 wantsNearby = enabled
             }
+            // `presenting:` unwraps the message, so the body has no `?? ""`
+            // standing in for a state that cannot happen. No actions: an alert
+            // whose only button dismisses it gets that button from SwiftUI.
             .alert(
                 "Restore Purchases",
                 isPresented: .init(
                     get: { restoreMessage != nil },
                     set: { if !$0 { restoreMessage = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(restoreMessage ?? "")
+                ),
+                presenting: restoreMessage
+            ) { _ in
+            } message: { message in
+                Text(message)
             }
         }
     }
@@ -145,7 +148,7 @@ struct SettingsView: View {
     /// "instantly" is not a promise the app is in a position to make, and one
     /// late banner would turn a working feature into a bug report. See
     /// `ExpenseNotifier`.
-    private var footer: String {
+    private var footer: LocalizedStringResource {
         switch notifier.authorization {
         case .denied:
             return "Notifications are turned off for Dutch in Settings."
@@ -262,7 +265,7 @@ struct SettingsView: View {
     private var unlimited: some View {
         Section {
             if purchases.hasUnlimitedGroups {
-                LabeledContent("Dutch Unlimited", value: "Purchased")
+                LabeledContent("Dutch Unlimited") { Text("Purchased") }
             } else {
                 // Restore lives here as well as on the group list. The list's
                 // version disappears the moment the purchase lands, which is
@@ -280,8 +283,8 @@ struct SettingsView: View {
     private func restore() async {
         let restored = await purchases.restore()
         restoreMessage = restored
-            ? "Your purchase has been restored."
-            : "No previous purchase was found for this Apple Account."
+            ? String(localized: "Your purchase has been restored.")
+            : String(localized: "No previous purchase was found for this Apple Account.")
     }
 
     // MARK: - About

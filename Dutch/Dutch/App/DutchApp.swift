@@ -77,7 +77,7 @@ struct DutchApp: App {
         UIApplication.shared.shortcutItems = [
             UIApplicationShortcutItem(
                 type: QuickAction.newExpense,
-                localizedTitle: "New Expense",
+                localizedTitle: String(localized: "New Expense"),
                 localizedSubtitle: name,
                 icon: UIApplicationShortcutIcon(systemImageName: "plus.circle"),
                 userInfo: nil

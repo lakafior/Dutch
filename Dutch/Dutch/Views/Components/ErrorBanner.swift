@@ -39,13 +39,41 @@ private struct ErrorBannerModifier: ViewModifier {
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: message)
             }
+            // Both jobs hang off the same `id`, which changes exactly when a
+            // message arrives — and runs after the banner has been rendered,
+            // which is when VoiceOver is ready to be told about it.
             .task(id: message) {
-                guard message != nil else { return }
+                guard let text = message else { return }
+                announce(text)
                 // Long enough to read a sentence, short enough that a stale
                 // failure isn't still on screen two actions later.
                 try? await Task.sleep(for: .seconds(6))
                 message = nil
             }
+    }
+
+    /// Speaks the failure, because nothing else here does.
+    ///
+    /// This banner replaced modal alerts, and an alert announces itself and
+    /// takes VoiceOver focus. An `overlay` does neither: the banner appears,
+    /// sits for six seconds and clears itself without a word, so a save that
+    /// failed was indistinguishable from one that worked for anyone not
+    /// looking at the screen. This is the app's only failure channel.
+    ///
+    /// An announcement rather than moving focus, deliberately. The banner is
+    /// most often raised over a form somebody is part-way through typing into
+    /// — `ExpenseFormView` is the case this whole modifier exists for — and
+    /// yanking focus out of that to read one sentence would cost more than it
+    /// carries.
+    ///
+    /// `.high` priority because the thing being announced disappears. A
+    /// default-priority announcement is dropped if VoiceOver happens to be
+    /// mid-utterance, and the sentence it was dropped in favour of is usually
+    /// the very tap that just failed.
+    private func announce(_ text: String) {
+        var announcement = AttributedString(text)
+        announcement.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(announcement).post()
     }
 
     private func banner(_ text: String) -> some View {
@@ -62,16 +90,14 @@ private struct ErrorBannerModifier: ViewModifier {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
+            Button("Dismiss", systemImage: "xmark") {
                 message = nil
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
             }
-            .accessibilityLabel("Dismiss")
+            .labelStyle(.iconOnly)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(width: 44, height: 44)
+            .contentShape(.rect)
             // Cancels out the frame's padding so the glyph still sits on the
             // same optical line as the text, while keeping the 44pt target.
             .padding(-12)

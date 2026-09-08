@@ -137,14 +137,17 @@ final class ScannerViewController: UIViewController {
             configureSession()
 
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if granted {
-                        self.configureSession()
-                    } else {
-                        self.coordinator?.report(QRScannerError.permissionDenied)
-                    }
+            // `UIViewController` is `@MainActor`, so this `Task` inherits that
+            // isolation and the hop the closure-based API needed is gone with
+            // it — the continuation resumes where the session has to be
+            // configured anyway.
+            Task { [weak self] in
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                guard let self else { return }
+                if granted {
+                    configureSession()
+                } else {
+                    coordinator?.report(QRScannerError.permissionDenied)
                 }
             }
 

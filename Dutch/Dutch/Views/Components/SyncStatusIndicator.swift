@@ -37,7 +37,9 @@ import SwiftUI
 /// exactly when they tap. That is also the only place left to mention
 /// pull-to-refresh, which is not a discoverable gesture on its own.
 struct SyncStatusIndicator: View {
-    @ObservedObject private var sync = CloudSyncMonitor.shared
+    /// A plain `let`: `CloudSyncMonitor` is `@Observable`, so reading its
+    /// properties in `body` below is what registers this view for updates.
+    private let sync = CloudSyncMonitor.shared
 
     @State private var showingDetail = false
 
@@ -114,13 +116,13 @@ struct SyncStatusIndicator: View {
     }
 
     private var caption: String {
-        if sync.isSyncing { return "Syncing with iCloud…" }
+        if sync.isSyncing { return String(localized: "Syncing with iCloud…") }
         if let problem = sync.problem { return problem }
 
         guard let lastSync = sync.lastSync else {
             // Not an error: mirroring may simply not have run its first import
             // yet, which is the normal state for the first seconds of a launch.
-            return "Waiting for iCloud"
+            return String(localized: "Waiting for iCloud")
         }
 
         // `RelativeDateTimeFormatter` renders the first minute as "in 0
@@ -128,8 +130,12 @@ struct SyncStatusIndicator: View {
         // one — and the first minute is exactly when somebody who just pulled
         // the list is reading this.
         guard Date.now.timeIntervalSince(lastSync) >= 60 else {
-            return "Synced just now"
+            return String(localized: "Synced just now")
         }
-        return "Synced \(Self.relative.localizedString(for: lastSync, relativeTo: .now))"
+        let ago = Self.relative.localizedString(for: lastSync, relativeTo: .now)
+        return String(
+            localized: "Synced \(ago)",
+            comment: "The placeholder is an already-localized relative time, e.g. '2 hours ago'."
+        )
     }
 }
