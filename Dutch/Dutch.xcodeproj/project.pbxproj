@@ -7,10 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2241FA4BAF2F4B913468E367 /* DutchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 307C54AAAD4B3056200312EC /* DutchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8DEE824FF470C937AA46C9EE /* DutchKit in Frameworks */ = {isa = PBXBuildFile; productRef = 57745B100BDD07F5B7402478 /* DutchKit */; };
+		8F11BA59F7DDA808F1702CC4 /* DutchKit in Frameworks */ = {isa = PBXBuildFile; productRef = 945F171B06D36DE45BD58D0D /* DutchKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3F24A60966D553141DB796CD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4264A94FAA1C3EB9B8DE404A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A26EE2846D8E1C16D213569;
+			remoteInfo = DutchWidget;
+		};
 		97ED1A83C692615D350C237F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4264A94FAA1C3EB9B8DE404A /* Project object */;
@@ -27,7 +36,22 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		AC7AECB37A401215706A0E33 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2241FA4BAF2F4B913468E367 /* DutchWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		307C54AAAD4B3056200312EC /* DutchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DutchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		489D8694301764C900E93A9C /* DutchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DutchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48E2ED1C30777C4800D4627F /* Dutch.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Dutch.storekit; sourceTree = "<group>"; };
 		A11CE0000000000000000001 /* Dutch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dutch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -35,12 +59,22 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		5DE20B7994C0AE87A3B2594F /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Shared; sourceTree = "<group>"; };
+		89F2A2B2A9573005C12CC328 /* DutchWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = DutchWidget; sourceTree = "<group>"; };
 		96A80BB06A05234F732717D6 /* DutchTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = DutchTests; sourceTree = "<group>"; };
 		9B7E01FF3880605147F3957A /* Dutch */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Dutch; sourceTree = "<group>"; };
 		D69418D68C530A14016BD765 /* DutchUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = DutchUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		369ACEAD0969A364FC04872C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F11BA59F7DDA808F1702CC4 /* DutchKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3BAE82E7FCE91D4BD2A72342 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,6 +106,7 @@
 				A11CE0000000000000000001 /* Dutch.app */,
 				"TEMP_A2F3EC15-8174-4344-8236-8BC53861A71D" /* DutchTests.xctest */,
 				489D8694301764C900E93A9C /* DutchUITests.xctest */,
+				307C54AAAD4B3056200312EC /* DutchWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -84,12 +119,38 @@
 				9B7E01FF3880605147F3957A /* Dutch */,
 				96A80BB06A05234F732717D6 /* DutchTests */,
 				D69418D68C530A14016BD765 /* DutchUITests */,
+				89F2A2B2A9573005C12CC328 /* DutchWidget */,
+				5DE20B7994C0AE87A3B2594F /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0A26EE2846D8E1C16D213569 /* DutchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 49BCB607131FE278F17F0FA1 /* Build configuration list for PBXNativeTarget "DutchWidget" */;
+			buildPhases = (
+				131AAB93936FEBF827013E1B /* Sources */,
+				369ACEAD0969A364FC04872C /* Frameworks */,
+				0E6DE3FCE4CEEB53D00B96B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5DE20B7994C0AE87A3B2594F /* Shared */,
+				89F2A2B2A9573005C12CC328 /* DutchWidget */,
+			);
+			name = DutchWidget;
+			packageProductDependencies = (
+				945F171B06D36DE45BD58D0D /* DutchKit */,
+			);
+			productName = DutchWidget;
+			productReference = 307C54AAAD4B3056200312EC /* DutchWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		2E6619B0D9BB5EDDA186FE48 /* DutchUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AE3CF8C0D2F20FD1949B1499 /* Build configuration list for PBXNativeTarget "DutchUITests" */;
@@ -120,12 +181,15 @@
 				E6B5ECC2A4283CE083480F25 /* Sources */,
 				DA57E90067D479B352030BAD /* Frameworks */,
 				1597231A327FE531BD0358ED /* Resources */,
+				AC7AECB37A401215706A0E33 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				584EEC2A4180C2C11D128297 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				5DE20B7994C0AE87A3B2594F /* Shared */,
 				9B7E01FF3880605147F3957A /* Dutch */,
 			);
 			name = Dutch;
@@ -190,11 +254,19 @@
 				4C20D028C782776870760416 /* Dutch */,
 				F8F51515156E7D94C1B426ED /* DutchTests */,
 				2E6619B0D9BB5EDDA186FE48 /* DutchUITests */,
+				0A26EE2846D8E1C16D213569 /* DutchWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0E6DE3FCE4CEEB53D00B96B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1597231A327FE531BD0358ED /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -219,6 +291,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		131AAB93936FEBF827013E1B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1CD3FEEE409783748A5C53D5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -243,6 +322,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		584EEC2A4180C2C11D128297 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A26EE2846D8E1C16D213569 /* DutchWidget */;
+			targetProxy = 3F24A60966D553141DB796CD /* PBXContainerItemProxy */;
+		};
 		D0D46B9A9742354BF4C5CA9A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = Dutch;
@@ -328,6 +412,32 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dutch.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dutch";
 			};
 			name = Debug;
+		};
+		34223641EAC2B5471AB6F5F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = DutchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 81;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "DutchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Dutch;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.8;
+				PRODUCT_BUNDLE_IDENTIFIER = net.smigi.Dutch.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		34F8F53977F2DA986FF30451 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -428,6 +538,33 @@
 			};
 			name = Release;
 		};
+		A6C0ECB754A890C68A8C7B67 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = DutchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 81;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "DutchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Dutch;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.8;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = net.smigi.Dutch.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		FE2DD619B72E6AE0AA3FD701 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -503,6 +640,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		49BCB607131FE278F17F0FA1 /* Build configuration list for PBXNativeTarget "DutchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A6C0ECB754A890C68A8C7B67 /* Debug */,
+				34223641EAC2B5471AB6F5F4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		AE3CF8C0D2F20FD1949B1499 /* Build configuration list for PBXNativeTarget "DutchUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -532,6 +678,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		57745B100BDD07F5B7402478 /* DutchKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DutchKit;
+		};
+		945F171B06D36DE45BD58D0D /* DutchKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DutchKit;
 		};

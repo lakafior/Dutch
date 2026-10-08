@@ -1630,6 +1630,34 @@
         }
       }
     },
+    "Opens Dutch on a new expense in the group you opened last." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet Dutch mit einer neuen Ausgabe in der zuletzt geöffneten Gruppe."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwiera Dutch na nowym wydatku w ostatnio otwartej grupie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre o Dutch numa nova despesa no último grupo que você abriu."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre o Dutch numa nova despesa no último grupo que abriste."
+          }
+        }
+      }
+    },
     "• %@ — %@ (%@), paid by %@" : {
       "localizations" : {
         "de" : {

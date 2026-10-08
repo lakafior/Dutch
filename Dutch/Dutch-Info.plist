@@ -4,6 +4,17 @@
 <dict>
 	<key>CKSharingSupported</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>net.smigi.Dutch.widget</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>net.smigi.dutch</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

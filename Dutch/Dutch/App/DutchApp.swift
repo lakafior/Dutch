@@ -4,6 +4,7 @@
 
 import AppIntents
 import CloudKit
+import DutchKit
 import SwiftUI
 import UIKit
 
@@ -50,7 +51,13 @@ struct DutchApp: App {
         // rewriting the quick action mid-session would change the Home Screen
         // under a menu somebody might have open.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { refreshQuickActions() }
+            if phase == .background {
+                refreshQuickActions()
+                // The group the widget leads with is the one last opened, and
+                // opening a group writes no store — so nothing else would tell
+                // the widget the trip had changed.
+                WidgetSnapshotWriter.shared.refresh()
+            }
         }
     }
 
@@ -126,6 +133,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated {
             SpotlightIndexer.shared.start(reading: PersistenceController.shared.viewContext)
 
+            // Same reasoning, for the Home Screen widget: it reads only what
+            // this writes. See `WidgetSnapshot` for why it never opens the
+            // database itself.
+            WidgetSnapshotWriter.shared.start(reading: PersistenceController.shared.viewContext)
+
             // Must be before launch finishes, not merely early: a notification
             // tapped while the app was not running is delivered as part of
             // launch, and a `UNUserNotificationCenter` delegate assigned any
@@ -182,8 +194,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
 // MARK: - Scene Delegate
 
-/// Handles accepted CloudKit share invitations, Home Screen quick actions and
-/// tapped Spotlight results.
+/// Handles accepted CloudKit share invitations, Home Screen quick actions,
+/// tapped Spotlight results and widget taps.
 ///
 /// This has to live on the *scene* delegate. The `UIApplicationDelegate`
 /// equivalent is never called in a scene-based app, which is a quiet way to end
@@ -212,12 +224,37 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         completionHandler(true)
     }
 
+    /// A widget tapped while the app was already running.
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        MainActor.assumeIsolated {
+            for context in URLContexts { Self.follow(context.url) }
+        }
+    }
+
+    /// Routes a `DutchLink`, and ignores any other URL.
+    ///
+    /// Navigation only: the scheme is open to every app on the device, so a link
+    /// may say where to go but never cause anything to happen there. See
+    /// `DutchLink`. A group that isn't on this device is reported by the group
+    /// list, the same as a stale quick action.
+    @MainActor
+    static func follow(_ url: URL) {
+        switch DutchLink(url: url) {
+        case .group(let id):
+            AppRouter.shared.open(.group(id))
+        case .newExpense(let id):
+            AppRouter.shared.open((id ?? ExpenseDefaults.lastOpenedGroupID).map { .newExpense(in: $0) })
+        case nil:
+            break
+        }
+    }
+
     /// A Spotlight result tapped while the app was already running.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         MainActor.assumeIsolated { SpotlightIndexer.handle(userActivity) }
     }
 
-    /// A quick action or Spotlight result that launched the app.
+    /// A quick action, Spotlight result or widget tap that launched the app.
     ///
     /// Both paths are needed, for each of them. The system delivers a
     /// cold-launch action here and never calls the matching method above for
@@ -234,6 +271,9 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
             }
             for activity in connectionOptions.userActivities {
                 SpotlightIndexer.handle(activity)
+            }
+            for context in connectionOptions.urlContexts {
+                Self.follow(context.url)
             }
             restoreLastGroup()
         }

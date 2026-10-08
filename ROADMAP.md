@@ -88,7 +88,7 @@ recorded.
 | — | Shipped | [Categories](#categories) | An optional category on an expense, drawn as a glyph in the log. | An optional `symbolName` on `Expense`, same trick as the group's — SF Symbols ship with the OS, so a full set costs nothing in the bundle. Nothing in the settlement reads it. | Doesn't group or filter the log yet; it labels rows |
 | — | Shipped | [Member avatars from SF Symbols](#member-avatars-from-sf-symbols) | A member can wear a glyph instead of their initials. | An optional `symbolName` on `Person`, and the group's curated set renamed `Emblem` and shared rather than copied. | — |
 | — | Shipped | [Archive a group](#archive-a-group) | Finished trips fold into one collapsed row instead of sitting in the list forever. | An optional `archivedDate` on `ExpenseGroup` and a split of the same unfiltered fetch. | Archived groups still count against the free limit, deliberately |
-| 8 | Not started | [Home screen widget](#8-home-screen-widget) | "You owe €120 · green-moon-tea", read from the same store. | The expensive half is already done — the stores and `ExpenseDefaults` live in the app group. Depends on **Who am I**. | ~200 KB extension binary |
+| 8 | Built for 1.1.8 | [Home screen widget](#8-home-screen-widget) | Small and medium Home Screen widgets, Lock Screen rectangular and inline, and a "New Expense" button for Control Center (iOS 18+). | The app writes a snapshot file into the app group on every save, sync and identity change; the widget only reads it, and never opens Core Data. Taps open the app through `DutchLink` URLs. | ~350 KB per device measured, not the ~200 KB estimated. Not yet configurable — always leads with the last group opened |
 | 12 | Shipped | [Exact amounts in a split](#12-exact-amounts-in-a-split) | Enter what each person owes when the receipt already says. Fixed rows come off the top; the remainder divides among the rest. | Cent-weights in the weighting that already existed — no model version, no promote, and an older build divides it correctly rather than falling back. | A tip is no longer separable from the items once saved; it reopens folded in |
 | 16 | Shipped | [Several people paid](#16-several-people-paid) | Several payers on one trip through the form, saved as one ordinary expense each. | The workaround being exactly correct is what made it cheap: the app performs it. No model change, no calculator change, nothing new for an old build to miss. | Buys entry convenience, not a tidier log — you still get one row per payer |
 | 26 | Shipped | [The order of the expense form](#26-the-order-of-the-expense-form) | Details drop below Paid By and Split Among; the currency becomes a control on the amount; a tip can be a flat sum. | The form put paperwork before people — six rows nobody touches sat above the two questions an expense turns on. The rate and the `savesAs` footer stay beside the figure they qualify. `Tip` is two cases in DutchKit, mirroring `RowShare`. | The flat sum is deliberately uncapped where a percentage is capped at 100% — no currency-free bound exists, so the *Saves as…* footer is the check |
@@ -954,6 +954,17 @@ net is +8 KB — the icon saving paid for the breakdown and very little else.
 ## Next
 
 ### 8. Home screen widget
+
+**Built 2026-10-08 for 1.1.8**, together with a Control Center button. What it
+does and why it is shaped this way is recorded in CLAUDE.md under *Things that are
+easy to break*; the short version is that the widget reads a snapshot the app
+writes and never touches the database. Measured cost, stripped: about 350 KB per
+device, against the estimate below.
+
+Left for later: choosing which group a widget shows (it leads with the last one
+opened), and a circular Lock Screen variant.
+
+The original note:
 
 "You owe €120 · green-moon-tea". A WidgetKit extension reading the same store.
 Depends on knowing who you are, above. A couple hundred KB for the extension binary.
