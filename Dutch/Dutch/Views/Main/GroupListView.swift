@@ -57,8 +57,24 @@ struct GroupListView: View {
     /// still updates.
     private let sync = CloudSyncMonitor.shared
 
-    /// Path-based navigation so creating a group can push straight into it.
-    @State private var path: [ExpenseGroup] = []
+    /// The group on the detail side of the split view, so creating a group can
+    /// open straight into it.
+    ///
+    /// A selection rather than a path since the list became the sidebar of a
+    /// `NavigationSplitView`. On the outer display and in portrait the split
+    /// collapses to a stack, and a selection there *is* a one-element path —
+    /// setting it pushes, Back clears it — so the iPhone behaves exactly as it
+    /// did. On a regular-width screen (iPhone Duo's inner display, a Pro Max in
+    /// landscape) the same value fills the right-hand column instead.
+    @State private var selection: ExpenseGroup?
+
+    /// Regular width means both columns are on screen at once.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    /// Kept fixed at `.all` with the toggle removed. Hiding the list would leave
+    /// one group filling a screen built to show two things side by side, and
+    /// the only way back to the others would be a button nobody looks for.
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingNewGroup = false
     @State private var showingJoinGroup = false
     @State private var showingSettings = false
@@ -89,14 +105,14 @@ struct GroupListView: View {
     /// paywall waits for that sheet to actually be gone.
     @State private var blockedAfterSheet = false
 
-    /// Held until the sheet has finished dismissing — pushing onto the path
+    /// Held until the sheet has finished dismissing — selecting a group
     /// while a sheet is still on screen is a reliable way to have the push
     /// silently swallowed.
     @State private var groupToOpen: ExpenseGroup?
 
     /// Where an App Intent or the Home Screen quick action wants the app to be.
-    /// This screen owns the navigation path, so it is the only thing that can
-    /// act on one.
+    /// This screen owns the selection, so it is the only thing that can act on
+    /// one.
     private var router: AppRouter { AppRouter.shared }
 
     private var store: GroupStore { GroupStore(context: context) }
@@ -109,8 +125,8 @@ struct GroupListView: View {
 
     /// The finished trips, folded away.
     ///
-    /// A disclosure rather than a second screen: the navigation path is typed
-    /// `[ExpenseGroup]`, so a separate archive destination would mean widening
+    /// A disclosure rather than a second screen: the selection is typed
+    /// `ExpenseGroup?`, so a separate archive destination would mean widening
     /// it to an enum and rewriting every push for a list most people will open
     /// once. Collapsed, this is a single row — which is the entire point, since
     /// the complaint was that the list never shrinks.
@@ -164,121 +180,180 @@ struct GroupListView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
-            List {
-                Section {
-                    ForEach(active) { group in
-                        NavigationLink(value: group) {
-                            GroupRow(group: group)
-                        }
-                        .swipeActions(edge: .leading) {
-                            archiveButton(for: group)
-                        }
-                    }
-                    .onDelete { delete(at: $0, from: active) }
-                }
-
-                archiveSection
-
-                // A way in that doesn't require getting blocked by the limit
-                // first, for someone whose purchase simply hasn't synced yet.
-                // Not *the* way in, despite what this comment used to claim:
-                // it is hidden while the list is empty — the empty state is an
-                // overlay across this list — so on a fresh install it shows
-                // nothing at all, which is how 1.1.7 was rejected under 2.1(b).
-                // `SettingsView.unlimited` is the unconditional route; keep it.
-                if !purchases.hasUnlimitedGroups && !groups.isEmpty {
-                    Section {
-                        Button {
-                            paywallReason = .browsing
-                        } label: {
-                            Label("Dutch Unlimited", systemImage: "infinity")
-                        }
-                    } footer: {
-                        Text(.pricingDescription)
-                    }
-                }
-            }
-            // The gesture this app is expected to have, given that everything
-            // in it arrives from somebody else's phone. It cannot make CloudKit
-            // fetch — no API can — so read `CloudSyncMonitor` before assuming
-            // more of it than it does.
-            .refreshable { await sync.refresh() }
-            .navigationDestination(for: ExpenseGroup.self) { group in
-                GroupDetailView(group: group)
-            }
-            // Outside the List, so the empty state centres on the screen
-            // instead of inside a single inset row with a separator under it.
-            .overlay {
-                if groups.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Groups", systemImage: "rectangle.3.group")
-                    } description: {
-                        Text(.createOrJoinAGroup)
-                    } actions: {
-                        // An empty state without a next action is a dead end.
-                        Button("Create a Group", action: requestNewGroup)
-                            .buttonStyle(.borderedProminent)
-                    }
-                }
-            }
-            .navigationTitle("Dutch")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showingJoinGroup = true
-                    } label: {
-                        Label("Join a Group", systemImage: "qrcode.viewfinder")
-                    }
-                }
-                // Leading, so it sits toward the title rather than crowding the
-                // primary action — and second in the group, so the action a
-                // person came to tap is still the one at the edge. It cannot go
-                // beside the large title itself: a `.principal` item replaces
-                // the title and forces inline mode.
-                ToolbarItem(placement: .topBarLeading) {
-                    SyncStatusIndicator()
-                }
-                // Trailing rather than leading, and before the primary action
-                // so the button somebody came to tap keeps the edge. Settings
-                // is a place people go looking for deliberately; it does not
-                // need to be the easiest thing to hit.
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: requestNewGroup) {
-                        Label("New Group", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingNewGroup, onDismiss: openPendingGroup) {
-                NewGroupSheet(onCreate: createGroup)
-            }
-            .sheet(isPresented: $showingJoinGroup) {
-                JoinGroupView()
-            }
-            .sheet(isPresented: $showingSettings) {
-                SettingsView()
-            }
-            .sheet(item: $paywallReason, onDismiss: resumeBlockedCreate) { reason in
-                PaywallView(reachedLimit: reason == .blocked)
-            }
-            // Loads the price and re-checks the entitlement. Here rather than
-            // in the paywall alone so a device that was offline at launch has
-            // both by the time anyone taps anything.
-            .task { await purchases.load() }
-            .errorBanner($errorMessage)
-            // Both, because an intent can arrive either way: on a cold launch
-            // the destination is already set by the time this appears, and on a
-            // warm one it changes while the list is on screen.
-            .onAppear(perform: followRouter)
-            .onChange(of: router.destination) { followRouter() }
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            sidebar
+                .toolbar(removing: .sidebarToggle)
+                // A minimum, never a maximum: in a book-like pose the system
+                // widens the sidebar out to the fold, and a cap would stop it
+                // short of the hinge. The row stacks its figures via
+                // `ViewThatFits` below this, so narrower only costs a line.
+                .navigationSplitViewColumnWidth(min: 300, ideal: 360)
+        } detail: {
+            detail
         }
+        // Collapsed, `nil` is the list and nothing needs filling. Expanded, an
+        // empty right-hand column is half the screen spent on a placeholder —
+        // and the split view itself can reset the selection to `nil` when the
+        // device opens, which would throw away the group somebody was in the
+        // moment before.
+        .onChange(of: horizontalSizeClass) { fillDetailIfNeeded() }
+        .onChange(of: selection) { fillDetailIfNeeded() }
+        .onAppear(perform: fillDetailIfNeeded)
+    }
+
+    /// The right-hand column, or — collapsed — the screen pushed over the list.
+    ///
+    /// Re-identified per group so each one gets a fresh `GroupDetailView`.
+    /// Without the `id`, switching rows in the sidebar would reuse the previous
+    /// group's view state — its resolved identity, its unclaimed joiners, any
+    /// half-open sheet — and its `onAppear` would never run for the new group,
+    /// so it would not be recorded as the last one opened.
+    ///
+    /// A group deleted on another device leaves `selection` holding an object
+    /// with no context; showing it would draw a screen of a group that no
+    /// longer exists.
+    @ViewBuilder
+    private var detail: some View {
+        if let group = selection, !group.isDeleted, group.managedObjectContext != nil {
+            GroupDetailView(group: group)
+                .id(group.objectID)
+        } else if horizontalSizeClass == .regular {
+            ContentUnavailableView {
+                Label("No Group Selected", systemImage: "rectangle.3.group")
+            } description: {
+                Text("Choose a group from the list.")
+            }
+        }
+    }
+
+    /// Puts a group in the right-hand column when there is one to show and the
+    /// column is actually visible.
+    ///
+    /// The last group opened, by the same record the quick action and Siri use,
+    /// so unfolding the phone continues the trip somebody is on; otherwise the
+    /// newest active group, which is the one at the top of the list.
+    ///
+    /// Never on compact width. There a selection is a push, and filling it would
+    /// make the group list impossible to stay on — Back would clear it and this
+    /// would immediately push again.
+    private func fillDetailIfNeeded() {
+        guard horizontalSizeClass == .regular, selection == nil else { return }
+        selection = GroupLookup.lastOpened(in: context).flatMap { last in
+            groups.contains(last) ? last : nil
+        } ?? active.first
+    }
+
+    private var sidebar: some View {
+        List(selection: $selection) {
+            Section {
+                ForEach(active) { group in
+                    NavigationLink(value: group) {
+                        GroupRow(group: group)
+                    }
+                    .swipeActions(edge: .leading) {
+                        archiveButton(for: group)
+                    }
+                }
+                .onDelete { delete(at: $0, from: active) }
+            }
+
+            archiveSection
+
+            // A way in that doesn't require getting blocked by the limit
+            // first, for someone whose purchase simply hasn't synced yet.
+            // Not *the* way in, despite what this comment used to claim:
+            // it is hidden while the list is empty — the empty state is an
+            // overlay across this list — so on a fresh install it shows
+            // nothing at all, which is how 1.1.7 was rejected under 2.1(b).
+            // `SettingsView.unlimited` is the unconditional route; keep it.
+            if !purchases.hasUnlimitedGroups && !groups.isEmpty {
+                Section {
+                    Button {
+                        paywallReason = .browsing
+                    } label: {
+                        Label("Dutch Unlimited", systemImage: "infinity")
+                    }
+                } footer: {
+                    Text(.pricingDescription)
+                }
+            }
+        }
+        // The gesture this app is expected to have, given that everything
+        // in it arrives from somebody else's phone. It cannot make CloudKit
+        // fetch — no API can — so read `CloudSyncMonitor` before assuming
+        // more of it than it does.
+        .refreshable { await sync.refresh() }
+        // Outside the List, so the empty state centres on the screen
+        // instead of inside a single inset row with a separator under it.
+        .overlay {
+            if groups.isEmpty {
+                ContentUnavailableView {
+                    Label("No Groups", systemImage: "rectangle.3.group")
+                } description: {
+                    Text(.createOrJoinAGroup)
+                } actions: {
+                    // An empty state without a next action is a dead end.
+                    Button("Create a Group", action: requestNewGroup)
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .navigationTitle("Dutch")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showingJoinGroup = true
+                } label: {
+                    Label("Join a Group", systemImage: "qrcode.viewfinder")
+                }
+            }
+            // Leading, so it sits toward the title rather than crowding the
+            // primary action — and second in the group, so the action a
+            // person came to tap is still the one at the edge. It cannot go
+            // beside the large title itself: a `.principal` item replaces
+            // the title and forces inline mode.
+            ToolbarItem(placement: .topBarLeading) {
+                SyncStatusIndicator()
+            }
+            // Trailing rather than leading, and before the primary action
+            // so the button somebody came to tap keeps the edge. Settings
+            // is a place people go looking for deliberately; it does not
+            // need to be the easiest thing to hit.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: requestNewGroup) {
+                    Label("New Group", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showingNewGroup, onDismiss: openPendingGroup) {
+            NewGroupSheet(onCreate: createGroup)
+        }
+        .sheet(isPresented: $showingJoinGroup) {
+            JoinGroupView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
+        .sheet(item: $paywallReason, onDismiss: resumeBlockedCreate) { reason in
+            PaywallView(reachedLimit: reason == .blocked)
+        }
+        // Loads the price and re-checks the entitlement. Here rather than
+        // in the paywall alone so a device that was offline at launch has
+        // both by the time anyone taps anything.
+        .task { await purchases.load() }
+        .errorBanner($errorMessage)
+        // Both, because an intent can arrive either way: on a cold launch
+        // the destination is already set by the time this appears, and on a
+        // warm one it changes while the list is on screen.
+        .onAppear(perform: followRouter)
+        .onChange(of: router.destination) { followRouter() }
     }
 
     // MARK: - Actions
@@ -347,9 +422,9 @@ struct GroupListView: View {
 
     /// Pushes the group an intent or a Home Screen action asked for.
     ///
-    /// The path is set rather than appended to, so arriving from outside always
-    /// lands on that group whatever was on screen before — and so a second
-    /// invocation doesn't stack the same group twice.
+    /// The selection is replaced, so arriving from outside always lands on that
+    /// group whatever was on screen before — and a second invocation can't
+    /// stack the same group twice.
     ///
     /// `.newExpense` is left in place rather than cleared: `GroupDetailView`
     /// consumes it once it is on screen and can open its own sheet. Clearing it
@@ -364,7 +439,7 @@ struct GroupListView: View {
             return
         }
 
-        path = [group]
+        selection = group
         if case .group = destination {
             router.destination = nil
         }
@@ -382,7 +457,7 @@ struct GroupListView: View {
 
         guard let group = groupToOpen else { return }
         groupToOpen = nil
-        path = [group]
+        selection = group
     }
 
     /// Offsets index the *section's* array, not the fetch. Two sections draw
@@ -392,6 +467,9 @@ struct GroupListView: View {
     private func delete(at offsets: IndexSet, from list: [ExpenseGroup]) {
         do {
             for index in offsets {
+                // Cleared first, so the detail column never draws a group that
+                // is mid-deletion; on a wide screen the next one fills it.
+                if list[index] == selection { selection = nil }
                 try store.delete(list[index])
             }
         } catch {
@@ -433,6 +511,12 @@ private struct GroupRow: View {
     /// said — in which case the row falls back to reporting the group as a
     /// whole, which is all it could say before identity existed.
     @State private var me: Person?
+
+    /// `.increased` while the row is selected in the split view's sidebar,
+    /// where it sits on a solid accent-coloured highlight. Red and green on
+    /// that blue were barely legible, and the colour only repeats what the
+    /// caption under the figure already says, so a selected row drops it.
+    @Environment(\.backgroundProminence) private var backgroundProminence
 
     init(group: ExpenseGroup) {
         self.group = group
@@ -561,7 +645,7 @@ private struct GroupRow: View {
                 Text(amount.formatted(in: group))
                     .font(.headline)
                     .monospacedDigit()
-                    .foregroundStyle(standing?.tint ?? .primary)
+                    .foregroundStyle(backgroundProminence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(standing?.tint ?? .primary))
                     // The figure changes whenever anyone adds an expense,
                     // including from another device — roll the digits so it's
                     // visible.

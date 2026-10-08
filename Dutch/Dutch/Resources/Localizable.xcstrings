@@ -1286,6 +1286,50 @@
         }
       }
     },
+    "Choose a group from the list." : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz grupę z listy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um grupo na lista."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um grupo da lista."
+          }
+        }
+      }
+    },
+    "No Group Selected" : {
+      "localizations" : {
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie wybrano grupy"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum grupo selecionado"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum grupo selecionado"
+          }
+        }
+      }
+    },
     "• %@ — %@ (%@), paid by %@" : {
       "localizations" : {
         "en" : {

@@ -164,12 +164,23 @@ struct GroupDetailView: View {
                 Button {
                     showingAddExpense = true
                 } label: {
-                    Label("Add Expense", systemImage: "plus.circle.fill")
+                    // Titled as well as drawn. A bare glyph in a bar with
+                    // nothing else in it has no neighbours to be understood
+                    // against, and this is the action the screen exists to
+                    // offer.
+                    //
+                    // Spelled out rather than a `Label` with `.titleAndIcon`.
+                    // At regular width the toolbar renders a `Label` itself
+                    // and ignores the label style, so on iPad and iPhone Duo's
+                    // inner display this was a lone glyph in a circle. Content
+                    // the toolbar can't recognise as a `Label` it draws as
+                    // given, at every width.
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                            .accessibilityHidden(true)
+                        Text("Add Expense")
+                    }
                 }
-                // Titled as well as drawn. A bare glyph in a bar with nothing
-                // else in it has no neighbours to be understood against, and
-                // this is the action the screen exists to offer.
-                .labelStyle(.titleAndIcon)
                 // Filled, not plain. As tinted text on a toolbar this was the
                 // primary action of the whole screen drawn exactly like a
                 // link — reported as "barely visible", which it was: nothing

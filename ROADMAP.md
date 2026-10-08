@@ -23,15 +23,19 @@ first-feedback batch and Polish:
 |---|---|
 | `ASSETCATALOG_COMPILER_OPTIMIZATION = space` | 188 KB |
 | `SWIFT_OPTIMIZATION_LEVEL = -Osize` (app **and** DutchKit) | 64 KB |
-| `TARGETED_DEVICE_FAMILY = 1` | 432 KB |
+| `TARGETED_DEVICE_FAMILY = 1` | 432 KB — *of the archive only; reversed, see below* |
 | the icon's ring gradient turned vertical | 244 KB |
 
-The last two were trades and were taken deliberately. iPhone-only does not make
-the app unavailable on iPad — it installs and runs in iPhone compatibility mode
-— it just stops the asset catalog storing a second copy of every icon rendition
-for the `pad` idiom, which was 539 KB of exact duplication. And the ring
-gradient is a visible departure from `icon.json`; the reasoning is in the
-comments in `Dutch/Design/RenderIcon.swift`.
+The last two were trades and were taken deliberately. And the ring gradient is a
+visible departure from `icon.json`; the reasoning is in the comments in
+`Dutch/Design/RenderIcon.swift`.
+
+**The iPhone-only row never saved a downloaded byte, and has been reversed.**
+What it removed was the asset catalog's second copy of every icon rendition for
+the `pad` idiom — but App Store thinning hands each device only its own idiom,
+so no iPhone ever downloaded those copies. The saving was real in the archive
+and zero on the phone. Measured 2026-10-08, see **[22](#22-ipad-and-mac)**; the
+app is universal again.
 
 What is left is 932 KB of binary and 212 KB of icon. The binary is the floor for
 6 000-odd lines of SwiftUI, and the remaining icon cost is three 1024×1024
@@ -92,7 +96,7 @@ recorded.
 | 19 | Shipped | [The Nearby button](#19-the-nearby-button) | A **Nearby** button offering the cafés and restaurants within a hundred metres as the title. | `MKLocalPointsOfInterestRequest`, not `MKLocalSearch.Request` — the latter searches for text. A button and never a prefill, which answers the permission timing and keeps the title optional at once. Degrades quietly when roaming is off. | Off by default, so the permission prompt only ever follows a switch in Settings |
 | 20 | Shipped | [The currency, from the country the chosen place is in](#20-the-currency-from-the-country-the-chosen-place-is-in) | The expense form defaults to the local currency. | `Locale(identifier: "und_PL").currency` — no embedded table, and the country comes free from the picked `MKMapItem`, so no `CLGeocoder`. The trap is carrying the previous country's *rate* across; `onChange(of: currencyCode)` already handles it, so let it run. | Rides on **19**: `Locale.current.region` is the region setting, not where you are |
 | 21 | Shipped | [The place on the expense](#21-the-place-on-the-expense) | The chosen name and its coordinates, stored on the expense; the row in the form opens the pin in Apple Maps. | A pin glyph marks the row in the log, and the name appears in words only once the title no longer says it. Grouping the log by place is still open — the log is already grouped by day, and a spend-by-place overview is a charts screen, which is in **Not planned**. | **`Dutch 9` is initialized and promoted in neither schema.** Debug builds work; a TestFlight or App Store build that attaches a place fails mirroring outright, which takes sharing with it. Do it before one ships, not after. The two-build check against an older peer is also still outstanding |
-| 22 | Not started | [iPad and Mac](#22-ipad-and-mac) | "Designed for iPad" is a checkbox; native iPad, Catalyst and macOS are real work. | Sync needs nothing — CloudKit is per Apple Account. Two things bite: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | 432 KB for native iPad, being a saving already taken |
+| 22 | In progress | [iPad and Mac](#22-ipad-and-mac) | Native iPad: the group list as a sidebar beside the group, the same split view iPhone Duo's inner display gets. Mac stays "Designed for iPad", a checkbox. | `NavigationSplitView`, collapsing to the old stack on compact width; `TARGETED_DEVICE_FAMILY = 1,2` and all four iPad orientations. Catalyst and native macOS are still real work: the app-group identifier is spelled differently on macOS, and share acceptance is a different method again. Both fail silently. | Zero bytes per device after thinning. Irreversible once shipped — a later build cannot drop iPad. Needs a real-iPad pass and 13" screenshots |
 | 24 | Not started | [An iMessage app](#24-an-imessage-app) | Assign a group to a group chat and manage its expenses inside Messages. | A target in this bundle, not a second app. The app group and `Intents/` already pay for most of it. May be worth more as a fix for the QR join dead-end than as a way to enter expenses. | App size — a second binary, plausibly past 2 MB with the widget. And whether an extension's writes export before the host app next launches is unverified |
 | 14 | Shipped | [Measure contrast, then claim it or fix it](#14-measure-contrast-then-claim-it-or-fix-it) | Measured: green failed at 2.22:1 on white, well under the 3:1 it needed. Light appearance now uses Apple's high-contrast pair. | Measured on both grounds the amount appears over. `Standing.tint` only — dark appearance already passed and was left alone. | Listing still doesn't claim it; that's metadata, not a build |
 | — | Not planned | [Receipt photos](#not-planned) | | Breaks all three constraints at once — CloudKit assets, sync weight, storage, and an image pipeline. | — |
@@ -1316,8 +1320,8 @@ rows, and one identity key — the app already writes today.*
 These four were raised together, with the reasonable assumption that the size
 ceiling rules them out. Measured, it doesn't. Three of them cost approximately
 nothing in the bundle — CoreLocation and MapKit ship with the OS, and the
-country-to-currency mapping is already sitting in Foundation. The fourth costs
-432 KB, inside a budget with well over a megabyte of headroom.
+country-to-currency mapping is already sitting in Foundation. The fourth was
+thought to cost 432 KB, and turned out to cost an iPhone nothing at all.
 
 What actually gates them is a permission prompt, a network round trip, a model
 version and some layout work. So they are here rather than in **Next**, and none
@@ -1329,8 +1333,9 @@ permission question separately.
 **Three of the four have since shipped**, and the heading is kept because the
 reasoning under it is what was decided rather than a queue of what is left:
 **19–21** landed together on 2026-09-04, off by default, and their entry now
-carries the one thing still outstanding — the `Dutch 9` promote. Only **22** is
-still a decision, and it is a decision about a sentence in the README.
+carries the one thing still outstanding — the `Dutch 9` promote. **22** was the
+last, and it turned out not to be a decision about the README at all — the
+432 KB never reached a phone. It is enabled as of 2026-10-08.
 
 ### 19–21. Nearby: one tap, three consequences
 
@@ -1668,32 +1673,63 @@ of this file records.
 
 ### 22. iPad and Mac
 
-The only one of the four with a real number attached to it, and the number is
-**432 KB**.
+**Enabled on 2026-10-08, not yet shipped.** `TARGETED_DEVICE_FAMILY = 1,2`, all
+four iPad orientations (multitasking requires them, and an upload without them is
+rejected), and the group list turned into a `NavigationSplitView` — which was
+built for iPhone Duo's inner display first and is the same layout iPad wanted.
 
-`TARGETED_DEVICE_FAMILY = 1` is in the savings table at the top of this file,
-and what it saved was the asset catalog storing a second copy of every icon
-rendition for the `pad` idiom. Supporting iPad puts them back.
+#### The 432 KB that wasn't
 
-That was worth measuring rather than estimating, and the measurement moved the
-answer. Against the 1644 KB archived on 2026-08-28 it lands at **2076 KB** —
-comfortably inside the 3 MB constraint, and about 28 KB *over* the 2 MB the
-README advertises. On the 1552 KB of 2026-08-20 it would have fitted with room
-to spare; Polish spent that room.
+This entry used to say iPad cost **432 KB** and would push the app past the
+README's 2 MB. That was measured on the archive, which is the one copy of the
+app no device downloads. Re-measured 2026-10-08 with Release builds of both
+families:
 
-So iPad is not blocked, but it is no longer free of a decision: **the thing that
-changes is the README's line, not the feature.** 2 MB is a claim this project
-made about itself, 3 MB is the constraint at the top of this file, and the honest
-options are to drop the claim to "under 3 MB", find 28 KB elsewhere, or decide
-iPad layout isn't worth the sentence. Worth knowing that the 432 KB is pure
-duplication — the same renditions stored twice under two idioms — so a smarter
-catalog, not a smaller app, is where that money would come back from.
+| | iPhone-only | universal |
+|---|---|---|
+| `Assets.car` as built | 213,736 B | 408,808 B |
+| thinned for an iPhone | 213,736 B | **213,736 B** |
+| thinned for an iPad | — | 213,736 B |
+| binary | — | +96 B |
 
-Worth being clear about what the bytes buy, which is nothing. Dutch is not
-unavailable on iPad today; it installs and runs in iPhone compatibility mode.
-This is a *layout* feature — a `NavigationSplitView`, a form that doesn't
-stretch a text field across eleven inches — and the honest question is whether
-that layout work is worth 432 KB, not whether iPad users can run the app.
+The universal catalog carries three extra `pad` renditions, byte-identical to the
+`phone` ones (90,565 / 66,408 / 37,625 bytes — light, dark, tinted). +195 KB
+rather than 432 KB now that the ring gradient is vertical. Thinned the way the
+App Store thins it, the iPhone slice is the same file to the byte. Reproduce with:
+
+```
+xcrun assetutil --idiom phone --scale 3 --display-gamut p3 \
+  --graphicsclass MTL3,1 --memory 4 -o thinned.car Assets.car
+```
+
+So the README's 2 MB stands, as long as it is measured where it should be: per
+device, in App Store Connect → the build → *App Store File Sizes*. Confirm that
+with the first TestFlight build that carries iPad: the iPhone rows should not
+move.
+
+#### What the layout does
+
+- **Compact width** — every iPhone in portrait, iPhone Duo's outer display —
+  collapses to the stack it always was. A selection is a one-element path.
+- **Regular width** — iPad, the Duo's inner display, a Pro Max in landscape —
+  shows both columns, the list fixed visible with its toggle removed. An empty
+  detail is filled with the last-opened group, else the newest.
+- A selected sidebar row drops the owe/owed colour on its figure: red and green
+  on the accent highlight were illegible, and the caption says it anyway.
+- Sheets become centred form sheets on iPad with no code at all, which answered
+  the old worry about a text field stretched across eleven inches.
+- The bottom-bar **Add Expense** is a hand-built `HStack`, not a `Label`: at
+  regular width the toolbar draws a `Label` itself and ignores
+  `.labelStyle(.titleAndIcon)`, which left iPad with a lone glyph in a circle.
+
+#### Still to do
+
+- A pass on a real iPad, including Split View and Stage Manager widths.
+- 13" iPad screenshots for the listing.
+
+**Once a version ships with iPad, it stays.** App Store Connect rejects a later
+build that drops a device family the previous version supported. iPhone-only was
+reversible; this is not.
 
 **The Mac is nearly free once iPad is done, by one route and not the others.**
 "Designed for iPad" is a checkbox in App Store Connect on Apple Silicon: no
@@ -1716,8 +1752,8 @@ if this ever goes past the checkbox:
   different method again. The failure mode is the one this app has already had
   once — invitations that appear to do nothing.
 
-*Cost: 432 KB for iPad, being the reverse of a saving already taken and already
-measured. Zero on top of that for "Designed for iPad". No model change.*
+*Cost: zero bytes per device after App Store thinning; +195 KB in the archive
+alone. Zero on top of that for "Designed for iPad". No model change.*
 
 ---
 
