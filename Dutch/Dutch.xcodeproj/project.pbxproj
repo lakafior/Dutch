@@ -29,6 +29,7 @@
 
 /* Begin PBXFileReference section */
 		489D8694301764C900E93A9C /* DutchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DutchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		48E2ED1C30777C4800D4627F /* Dutch.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Dutch.storekit; sourceTree = "<group>"; };
 		A11CE0000000000000000001 /* Dutch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dutch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		"TEMP_A2F3EC15-8174-4344-8236-8BC53861A71D" /* DutchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DutchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -78,6 +79,7 @@
 		DF13B987A43095B2722A20CD = {
 			isa = PBXGroup;
 			children = (
+				48E2ED1C30777C4800D4627F /* Dutch.storekit */,
 				A11CE0000000000000000002 /* Products */,
 				9B7E01FF3880605147F3957A /* Dutch */,
 				96A80BB06A05234F732717D6 /* DutchTests */,

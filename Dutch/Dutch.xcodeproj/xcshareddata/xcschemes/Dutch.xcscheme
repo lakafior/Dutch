@@ -87,7 +87,7 @@
          </CommandLineArgument>
       </CommandLineArguments>
       <StoreKitConfigurationFileReference
-         identifier = "../Dutch.storekit">
+         identifier = "../../Dutch.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
