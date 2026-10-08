@@ -1840,10 +1840,19 @@ model change.*
 
 ## Localization
 
-**Dutch speaks English and Polish.** One `Localizable.xcstrings` holds 252 keys,
-an `InfoPlist.xcstrings` carries the camera prompt, there is no `.lproj` in the
-source tree, and nothing is stale or untranslated. Polish shipped 2026-08-27,
-partly through the repo's first outside contributions.
+**Dutch speaks English, Polish, Portuguese (Brazil and Portugal) and German.**
+One `Localizable.xcstrings` holds 398 keys, an `InfoPlist.xcstrings` carries the
+camera and location prompts, there is no `.lproj` in the source tree, and
+nothing is stale or untranslated. Polish shipped 2026-08-27, partly through the
+repo's first outside contributions; German was added 2026-10-08, one language
+per release.
+
+German uses informal *du* and Apple's own German UI vocabulary — *Sichern*,
+*Mitteilungen*, *Apple Account* — so it reads like the system around it.
+`de.lproj` is 36.4 KB, level with `pl` (35.8) and `pt-BR` (36.0). German was
+chosen over Japanese because Japanese needs whole-unit splitting for currencies
+without a minor unit first: `Money` stores hundredths, so ¥1,000 split three
+ways displays as three ¥333 shares.
 
 This section used to say the app was "not merely untranslated — unlocalizable as
 written", and list the three things standing in front of a second language. All

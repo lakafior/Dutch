@@ -28,6 +28,12 @@
     "NSCameraUsageDescription" : {
       "comment" : "Why the app asks for the camera. iOS shows this in the permission alert; the English source is INFOPLIST_KEY_NSCameraUsageDescription.",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch verwendet die Kamera, um den QR-Code einer Gruppe zu scannen, damit du ihr beitreten kannst."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -39,12 +45,30 @@
             "state" : "translated",
             "value" : "Dutch używa aparatu, aby zeskanować kod QR grupy i dołączyć do niej."
           }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dutch usa a câmera para escanear o código QR de um grupo e você poder entrar nele."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dutch usa a câmara para ler o código QR de um grupo, para que possas entrar nele."
+          }
         }
       }
     },
     "NSLocationWhenInUseUsageDescription" : {
       "comment" : "Why the app asks for location. iOS shows this in the permission alert; the English source is INFOPLIST_KEY_NSLocationWhenInUseUsageDescription.",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dutch liest deinen Standort einmalig, wenn du bei einer Ausgabe auf „In der Nähe“ tippst, um Orte in deiner Umgebung – oder die Straße, in der du bist – als Titel vorzuschlagen."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
@@ -55,6 +79,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dutch odczytuje Twoje położenie jednorazowo, gdy dotkniesz przycisku „W pobliżu” przy wydatku, aby zaproponować pobliskie miejsca — albo ulicę, na której jesteś — jako jego tytuł."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dutch lê onde você está uma única vez, quando você toca em “Por perto” numa despesa, para sugerir os lugares ao seu redor — ou a rua em que você está — como título."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dutch lê onde estás uma única vez, quando tocas em “Por perto” numa despesa, para sugerir os lugares à tua volta — ou a rua onde estás — como título."
           }
         }
       }

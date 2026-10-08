@@ -175,6 +175,7 @@
 			knownRegions = (
 				en,
 				Base,
+				de,
 				pl,
 				"pt-BR",
 				"pt-PT",

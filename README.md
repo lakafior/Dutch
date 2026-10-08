@@ -14,7 +14,7 @@ No accounts. No servers. No trackers. Smaller than a photo.
 
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-brightgreen.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-lightgrey.svg)](#-building--testing)
-[![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20Polski-629dff.svg)](#what-it-does)
+[![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20Deutsch%20%C2%B7%20Polski%20%C2%B7%20Portugu%C3%AAs-629dff.svg)](#what-it-does)
 [![Dependencies](https://img.shields.io/badge/dependencies-zero-success.svg)](#-technology-stack-pure-apple)
 [![DutchKit tests](https://github.com/lakafior/Dutch/actions/workflows/ci.yml/badge.svg)](https://github.com/lakafior/Dutch/actions/workflows/ci.yml)
 
@@ -53,7 +53,7 @@ how few payments would clear it.**
 | **Spotlight and quick actions** | Search your groups from the Home Screen, or long-press the icon to add an expense to the one you were last in. |
 | **Told when it changes** | Optional notifications when somebody else adds an expense, so checking the balance isn't something you have to remember to do. Off until you turn them on. |
 | **Fully offline** | Everything is written to Core Data locally and syncs when the device reconnects. |
-| **English and Polish** | The whole app, including the summary you share with the group. Adding a language is a column in one string catalogue rather than a rewrite, so if you want yours, [say so](https://github.com/lakafior/Dutch/issues). |
+| **English, German, Polish and Portuguese** | The whole app, including the summary you share with the group — and Portuguese twice, for Brazil and for Portugal. Adding a language is a column in one string catalogue rather than a rewrite, so if you want yours, [say so](https://github.com/lakafior/Dutch/issues). |
 
 Where the app is going next, and what it deliberately won't do, is in
 [ROADMAP.md](ROADMAP.md).

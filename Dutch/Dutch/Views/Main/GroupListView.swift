@@ -187,7 +187,12 @@ struct GroupListView: View {
                 // widens the sidebar out to the fold, and a cap would stop it
                 // short of the hinge. The row stacks its figures via
                 // `ViewThatFits` below this, so narrower only costs a line.
-                .navigationSplitViewColumnWidth(min: 300, ideal: 360)
+                //
+                // Ideal 400 rather than the 360 it started at: at 360 a shared
+                // group's name, its badge and the amount didn't share a line on
+                // an iPad Pro 13", so "Lisbon 2026" wrapped onto two and made
+                // the top row of the list taller than the rest.
+                .navigationSplitViewColumnWidth(min: 300, ideal: 400)
         } detail: {
             detail
         }
@@ -540,7 +545,7 @@ private struct GroupRow: View {
 
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline) {
-                    identity(memberCount: memberCount, expenseCount: expenseCount)
+                    identity(memberCount: memberCount, expenseCount: expenseCount, nameOnOneLine: true)
                     Spacer(minLength: 12)
                     money(settlement, standing: standing, alignment: .trailing)
                 }
@@ -587,11 +592,20 @@ private struct GroupRow: View {
     }
 
     @ViewBuilder
-    private func identity(memberCount: Int, expenseCount: Int) -> some View {
+    ///
+    /// `nameOnOneLine` is for the side-by-side layout. There the name is held
+    /// at its full width, so `ViewThatFits` can see the line doesn't fit and
+    /// pick the stacked layout. A name free to wrap counts as fitting, so in a
+    /// narrow iPad sidebar "Lisbon 2026" broke over two lines beside its amount
+    /// and the stacked layout was never chosen. Only the name: pinning the
+    /// whole block squeezed the counts beneath it to nothing.
+    private func identity(memberCount: Int, expenseCount: Int, nameOnOneLine: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Text(group.name ?? String(localized: .unnamedGroup))
                     .font(.headline)
+                    .lineLimit(nameOnOneLine ? 1 : nil)
+                    .fixedSize(horizontal: nameOnOneLine, vertical: false)
 
                 if group.cloudKitShareURL != nil {
                     Image(systemName: "person.2.fill")
